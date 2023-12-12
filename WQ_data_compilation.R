@@ -11,15 +11,15 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_unlock()
 pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
                ggmap, tibble, zoo, measurements,
-               sf, raster, spData, rgeos, rgdal,
-               tmap, tmpatools, htmlwidgets,
+               sf, raster, spData, 
+               tmap, tmaptools, htmltools, htmlwidgets,
                install = TRUE) 
-#
+#remotes::install_github("rstudio/htmltools") #After Rtools install: write('PATH="${RTOOLS40_HOME}\\usr\\bin;${PATH}"', file = "~/.Renviron", append = TRUE);; Sys.which("make")
 #
 ####Compilation setup####
 #
 #Set parameters - run for each data source type
-Estuary_code <- c("SL") #Two letter estuary code
+Estuary_code <- c("CR") #Two letter estuary code
 Data_source <- c("Portal") #"Portal" or "WA" 
 #
 #Years of data:
@@ -37,9 +37,11 @@ Location_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Da
 #Read in Excel results file (for 1 file) - skip to next section if only 1 results file
 Results_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 #Read in Excel results file (for 2 files)
-Results1 <- as.data.frame(read_excel(paste0("Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", "YYYY",".xlsx"), na = c("NA", " ", "", "Z")))
-Results2 <- as.data.frame(read_excel(paste0("Raw_data/", Estuary_code, "_", Data_source,"_Results_", "YYYY", "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
-Results_data <- rbind(Results1, Results2)
+Results1 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", "2007",".xlsx"), na = c("NA", " ", "", "Z")))
+Results2 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2008", "_", "2014",".xlsx"), na = c("NA", " ", "", "Z")))
+Results3 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2015", "_", "2019",".xlsx"), na = c("NA", " ", "", "Z")))
+Results4 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2020", "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
+Results_data <- rbind(Results1, Results2, Results3, Results4)
 #If more files are needed, copy and edit the proper number of Results# lines of code and make sure to add all versions to the Results_data <- rbind() line.
 #
 ##Estuary area  
@@ -150,7 +152,7 @@ saveWidget(map, paste0("Maps/", Estuary_code, "_", Data_source,"_WQ_stations_", 
 #
 ####Clean parameter data####
 #
-Combined_filteredk <- Combined_data@data
+Combined_filteredk <- Combined_data@data 
 #
 Combined_filteredk <- Combined_filteredk %>% 
   mutate(ResultMeasureValue = as.numeric(ifelse(CharacteristicName == "Specific conductance" & 'ResultMeasure/MeasureUnitCode' == "mS/cm", #Convert Spec Cond mS to uS
@@ -162,7 +164,8 @@ Combined_filteredk <- Combined_filteredk %>%
                                                          ifelse(CharacteristicName == "Specific conductance", "uS/cm",#Correct Specific conductance units
                                                                 ifelse(CharacteristicName == "pH", NA,  #Correct pH units
                                                                        ifelse(CharacteristicName == "Stream flow, instantaneous", "m3/s", #Correct Stream flow units
-                                                                              Combined_filtered$'ResultMeasure/MeasureUnitCode'))))))
+                                                                              Combined_filtered$'ResultMeasure/MeasureUnitCode')))))) %>% 
+  dplyr::relocate(KML, .after = last_col())
 #
 head(Combined_filteredk)
 #
