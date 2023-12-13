@@ -25,7 +25,6 @@ Data_source <- c("Portal") #"Portal" or "WA"
 #Years of data:
 Start_year <- c("2000")
 End_year <- c("2022")
-Split_files <- c("N") #Are the results/data files split due to size ("Y" or "N")?
 #
 #
 #
@@ -147,7 +146,7 @@ Combined_data <- union(Estuary_data, Outside_data)
                        tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
 
 #
-saveWidget(map, paste0("Maps/", Estuary_code, "_", Data_source,"_WQ_stations_", Start_year, "_", End_year, "_widget.html"))
+saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/", Estuary_code, "_", Data_source,"_WQ_stations_", Start_year, "_", End_year, "_widget.html"))
 #
 #
 ####Clean parameter data####
