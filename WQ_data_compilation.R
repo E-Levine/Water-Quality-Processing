@@ -9,21 +9,22 @@
 #Load require packages (install as necessary)
 if (!require("pacman")) install.packages("pacman")
 pacman::p_unlock()
-pacman::p_load(plyr, tidyverse, readxl, writeXL, #Df manipulation, basic summary
+pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
                ggmap, tibble, zoo, measurements,
+               sf, raster, spData, 
+               tmap, tmaptools, htmltools, htmlwidgets,
                install = TRUE) 
-#
+#remotes::install_github("rstudio/htmltools") #After Rtools install: write('PATH="${RTOOLS40_HOME}\\usr\\bin;${PATH}"', file = "~/.Renviron", append = TRUE);; Sys.which("make")
 #
 ####Compilation setup####
 #
 #Set parameters - run for each data source type
-Estuary_code <- c("LW") #Two letter estuary code
+Estuary_code <- c("CR") #Two letter estuary code
 Data_source <- c("Portal") #"Portal" or "WA" 
 #
 #Years of data:
 Start_year <- c("2000")
 End_year <- c("2022")
-Split_files <- c("N") #Are the results/data files split due to size ("Y" or "N")?
 #
 #
 #
@@ -35,10 +36,20 @@ Location_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Da
 #Read in Excel results file (for 1 file) - skip to next section if only 1 results file
 Results_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 #Read in Excel results file (for 2 files)
-Results1 <- as.data.frame(read_excel(paste0("Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", "YYYY",".xlsx"), na = c("NA", " ", "", "Z")))
-Results2 <- as.data.frame(read_excel(paste0("Raw_data/", Estuary_code, "_", Data_source,"_Results_", "YYYY", "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
-Results_data <- rbind(Results1, Results2)
+Results1 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", "2007",".xlsx"), na = c("NA", " ", "", "Z")))
+Results2 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2008", "_", "2014",".xlsx"), na = c("NA", " ", "", "Z")))
+Results3 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2015", "_", "2019",".xlsx"), na = c("NA", " ", "", "Z")))
+Results4 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2020", "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
+Results_data <- rbind(Results1, Results2, Results3, Results4)
 #If more files are needed, copy and edit the proper number of Results# lines of code and make sure to add all versions to the Results_data <- rbind() line.
+#
+##Estuary area  
+Estuary_area <- st_read(paste0("KML/", Estuary_code, ".kml"))
+plot(Estuary_area[2])
+#
+##State Outline
+FL_outline <- st_read("KML/FL_Outlines/FL_Outlines.shp")
+plot(FL_outline)
 #
 #
 #
@@ -61,9 +72,11 @@ head(Location_data, 4)
 if(Data_source == "Portal"){
   keep_results_portal <- c("MonitoringLocationIdentifier", "ResultIdentifier", "ActivityStartDate", "ActivityStartTime/Time", 
                            "ActivityStartTime/TimeZoneCode", "CharacteristicName", "ResultMeasureValue", "ResultMeasure/MeasureUnitCode")
-  Results <- Results_data[keep_results_portal]} else
-  {keep_results_atlas <- "TEMP"
-  Results <- Results_data[keep_results_atlas]}
+  Results <- Results_data[keep_results_portal]} else{
+    keep_results_atlas <- "TEMP"
+    Results <- Results_data[keep_results_atlas]}
+#
+#
 #
 #Confirm desired columns and naming
 head(Results, 4)
@@ -99,9 +112,48 @@ unique(Combined_filtered$CharacteristicName)
 #
 #
 #
+####Map of stations and limitation of stations to estuary area####
+#
+#Transform CRS and data of WQ data to spatial data
+WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered,
+                                            proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
+                     "+proj=longlat +datum=WGS84 +no_defs +type=crs")
+#
+#Check CRS s
+crs(Estuary_area)
+crs(WQ_sp)
+#
+##Crop to estuary area
+Estuary_data <- WQ_sp[as.vector(st_intersects(Estuary_area, st_as_sf(WQ_sp), sparse = FALSE)), ]
+##Run following lines only if issue with Loop above
+#sf_use_s2(FALSE)
+#Estuary_data <- WQ_sp[lengths(st_intersects(Estuary_area, st_as_sf(WQ_sp))>0,]
+#sf_use_s2(TRUE)
+#
+Estuary_data@data <- Estuary_data@data %>% mutate(KML = "In") #Add KML classification for Inside KML area
+Outside_data <- WQ_sp[as.vector(st_disjoint(Estuary_area, st_as_sf(WQ_sp), sparse = FALSE)), ]
+Outside_data@data <- Outside_data@data %>% mutate(KML = "Out")
+Combined_data <- union(Estuary_data, Outside_data)
+#
+#Visualize data locations
+(map <- tmap_leaflet(tm_shape(Estuary_area) + #Estuary area
+                       tm_polygons() + 
+                         tm_shape(FL_outline) + #Outline of shoreline
+                       tm_borders()+
+                        tm_shape(Combined_data) + #Stations relation to estuary area
+                       tm_dots("KML", palette = c(In = "red", Out = "black"), size = 0.25, legend.show = TRUE,
+                               popup.vars = c("StationID" = "MonitoringLocationIdentifier", "Latitude" = "LatitudeMeasure", "Longitude" = "LongitudeMeasure")) +
+                       tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
+
+#
+saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/", Estuary_code, "_", Data_source,"_WQ_stations_", Start_year, "_", End_year, "_widget.html"))
+#
+#
 ####Clean parameter data####
 #
-Combined_filtered <- Combined_filtered %>% 
+Combined_filteredk <- Combined_data@data 
+#
+Combined_filteredk <- Combined_filteredk %>% 
   mutate(ResultMeasureValue = as.numeric(ifelse(CharacteristicName == "Specific conductance" & 'ResultMeasure/MeasureUnitCode' == "mS/cm", #Convert Spec Cond mS to uS
                                                 ResultMeasureValue*1000, 
                                                 ifelse(CharacteristicName == "Stream flow, instantaneous" & 'ResultMeasure/MeasureUnitCode' == "ft3/s", #Convert ft3 to m3
@@ -111,9 +163,10 @@ Combined_filtered <- Combined_filtered %>%
                                                          ifelse(CharacteristicName == "Specific conductance", "uS/cm",#Correct Specific conductance units
                                                                 ifelse(CharacteristicName == "pH", NA,  #Correct pH units
                                                                        ifelse(CharacteristicName == "Stream flow, instantaneous", "m3/s", #Correct Stream flow units
-                                                                              Combined_filtered$'ResultMeasure/MeasureUnitCode'))))))
+                                                                              Combined_filtered$'ResultMeasure/MeasureUnitCode')))))) %>% 
+  dplyr::relocate(KML, .after = last_col())
 #
-head(Combined_filtered)
+head(Combined_filteredk)
 #
 #
 #
@@ -121,6 +174,6 @@ head(Combined_filtered)
 ####Save filtered data####
 #
 #
-write_xlsx(Combined_filtered, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_", Start_year, "_", End_year,".xlsx"), format_headers = TRUE)
+write_xlsx(Combined_filteredk, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_", Start_year, "_", End_year,".xlsx"), format_headers = TRUE)
 #
 #
