@@ -169,6 +169,8 @@ Combined_filteredk <- Combined_filteredk %>%
 head(Combined_filteredk)
 #
 #
+Comb_fil_1 <- Combined_filteredk %>% filter(ActivityStartDate < "2012-01-01")
+Comb_fil_2 <- Combined_filteredk %>% filter(ActivityStartDate >= "2012-01-01")
 #
 #
 ####Save filtered data####
@@ -176,4 +178,7 @@ head(Combined_filteredk)
 #
 write_xlsx(Combined_filteredk, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_", Start_year, "_", End_year,".xlsx"), format_headers = TRUE)
 #
+##Dividing files - use below
+write_xlsx(Comb_fil_2, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_2012_", End_year,".xlsx"), format_headers = TRUE)
+
 #
