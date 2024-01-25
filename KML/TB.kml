@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>Tampa Bay.kml</name>
+	<StyleMap id="m_ylw-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="s_ylw-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<LineStyle>
+			<color>ffff0000</color>
+		</LineStyle>
+		<PolyStyle>
+			<color>66ff0000</color>
+		</PolyStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<LineStyle>
+			<color>ffff0000</color>
+		</LineStyle>
+		<PolyStyle>
+			<color>66ff0000</color>
+		</PolyStyle>
+	</Style>
+	<Placemark>
+		<name>Tampa Bay</name>
+		<visibility>0</visibility>
+		<styleUrl>#m_ylw-pushpin</styleUrl>
+		<Polygon>
+			<tessellate>1</tessellate>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-82.73610668255566,27.61414150645263,0 -82.76261860701727,27.60280215698835,0 -82.75710828349224,27.5767319382855,0 -82.74613183240288,27.53816400854305,0 -82.71167723493184,27.49671846995631,0 -82.66713203080838,27.51490983251085,0 -82.49675476921803,27.457544820275,0 -82.36852612928938,27.52504257030046,0 -82.34722721469583,27.85887207266271,0 -82.35733087249267,27.99545109991212,0 -82.50577995000363,27.9950467056261,0 -82.56999104626985,27.99687292209839,0 -82.62546712766611,28.05440451763932,0 -82.73633874678193,28.0489224536735,0 -82.85077085181339,27.88326403365662,0 -82.84587295713699,27.85190490671589,0 -82.82434737265525,27.81811750912479,0 -82.80125688583435,27.80003706143562,0 -82.7787281908619,27.7769011855755,0 -82.76426056967388,27.75625300844348,0 -82.7590026865963,27.74162187698676,0 -82.7451539279696,27.72501913758769,0 -82.73813111261649,27.70130309867058,0 -82.73686634052359,27.68362562894435,0 -82.74138438301668,27.67551018680063,0 -82.74865304802485,27.6486713947134,0 -82.74055864525404,27.63456804475864,0 -82.73610668255566,27.61414150645263,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+</Document>
+</kml>

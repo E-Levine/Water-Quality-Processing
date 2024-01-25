@@ -19,14 +19,14 @@ pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
 ####Compilation setup####
 #
 #Set parameters - run for each data source type
-Estuary_code <- c("CR") #Two letter estuary code
-Data_source <- c("Portal") #"Portal" or "WA" 
+Estuary_code <- c("TB") #Two letter estuary code
+Data_source <- c("FIM") #"Portal", "WA" , or "FIM"
 #
 #Years of data:
-Start_year <- c("2000")
+Start_year <- c("1989")
 End_year <- c("2022")
 #
-#
+#Skip to line 47-52, then to 123 if working with FIM data
 #
 ####Load files####
 #
@@ -119,6 +119,11 @@ WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)],
                                             proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
                      "+proj=longlat +datum=WGS84 +no_defs +type=crs")
 #
+#SKIP 123-125 if NOT working with FIM data:: Assign FIM data to working data frame
+Combined_filtered <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"))) %>% 
+  dplyr::select(TripID, Reference, Sampling_Date, StartTime, Depth, Temperature, pH, Latitude, Longitude, everything()) %>% filter(Longitude != "NULL") %>% mutate(Longitude = as.numeric(Longitude), Latitude = as.numeric(Latitude))
+WQ_sp <- SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
+#
 #Check CRS s
 crs(Estuary_area)
 crs(WQ_sp)
@@ -136,15 +141,25 @@ Outside_data@data <- Outside_data@data %>% mutate(KML = "Out")
 Combined_data <- union(Estuary_data, Outside_data)
 #
 #Visualize data locations
-(map <- tmap_leaflet(tm_shape(Estuary_area) + #Estuary area
-                       tm_polygons() + 
+if(Data_source == "Portal"){
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + #Estuary area
+                         tm_polygons() + 
                          tm_shape(FL_outline) + #Outline of shoreline
-                       tm_borders()+
-                        tm_shape(Combined_data) + #Stations relation to estuary area
-                       tm_dots("KML", palette = c(In = "red", Out = "black"), size = 0.25, legend.show = TRUE,
-                               popup.vars = c("StationID" = "MonitoringLocationIdentifier", "Latitude" = "LatitudeMeasure", "Longitude" = "LongitudeMeasure")) +
-                       tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
-
+                         tm_borders()+
+                         tm_shape(Combined_data) + #Stations relation to estuary area
+                         tm_dots("KML", palette = c(In = "red", Out = "black"), size = 0.25, legend.show = TRUE,
+                                 popup.vars = c("StationID" = "MonitoringLocationIdentifier", "Latitude" = "LatitudeMeasure", "Longitude" = "LongitudeMeasure")) +
+                         tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
+} else if (Data_source == "FIM") {
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + #Estuary area
+                         tm_polygons() + 
+                         tm_shape(FL_outline) + #Outline of shoreline
+                         tm_borders()+
+                         tm_shape(Combined_data) + #Stations relation to estuary area
+                         tm_dots("KML", palette = c(In = "red", Out = "black"), size = 0.25, legend.show = TRUE,
+                                 popup.vars = c("StationID" = "Reference", "Latitude" = "Latitude", "Longitude" = "Longitude")) +
+                         tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
+}
 #
 saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/", Estuary_code, "_", Data_source,"_WQ_stations_", Start_year, "_", End_year, "_widget.html"))
 #
@@ -152,7 +167,7 @@ saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/", Estuary_code, "
 ####Clean parameter data####
 #
 Combined_filteredk <- Combined_data@data 
-#
+#Skip 171-182 is working with FIM data
 Combined_filteredk <- Combined_filteredk %>% 
   mutate(ResultMeasureValue = as.numeric(ifelse(CharacteristicName == "Specific conductance" & 'ResultMeasure/MeasureUnitCode' == "mS/cm", #Convert Spec Cond mS to uS
                                                 ResultMeasureValue*1000, 
