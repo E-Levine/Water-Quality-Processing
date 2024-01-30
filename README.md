@@ -15,4 +15,5 @@ _Nested within the Water Quality Processing Data folder:_
 *   *\Data\Compiled_data:   Location for summary data outputs (i.e. daily, monthly, etc.) <br>
 *   *   *\Data\Reference_data:   Location for data used to select or limit water quality data (i.e. daily, monthly, etc.) <br> 
 *   *\Maps :   Location for output of map files <br>
+*   *   *\Maps\Station_selection:   Location for output of WQ station map showing possible stations and selected stations<br> 
 *   *\Reference documents :   Location for reference files <br>
