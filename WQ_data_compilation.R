@@ -20,11 +20,11 @@ pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
 #
 #Set parameters - run for each data source type
 Estuary_code <- c("TB") #Two letter estuary code
-Data_source <- c("FIM") #"Portal", "WA" , or "FIM"
+Data_source <- c("Portal") #"Portal", "WA" , or "FIM"
 #
 #Years of data:
-Start_year <- c("1989")
-End_year <- c("2022")
+Start_year <- c("2015")
+End_year <- c("2023")
 #
 #Skip to line 47-52, then to 123 if working with FIM data
 #
@@ -167,7 +167,7 @@ saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/", Estuary_code, "
 ####Clean parameter data####
 #
 Combined_filteredk <- Combined_data@data 
-#Skip 171-182 is working with FIM data
+#Skip 171-182 if working with FIM data
 Combined_filteredk <- Combined_filteredk %>% 
   mutate(ResultMeasureValue = as.numeric(ifelse(CharacteristicName == "Specific conductance" & 'ResultMeasure/MeasureUnitCode' == "mS/cm", #Convert Spec Cond mS to uS
                                                 ResultMeasureValue*1000, 
@@ -195,5 +195,4 @@ write_xlsx(Combined_filteredk, paste0("../Water-Quality-Processing-Data/Data/Raw
 #
 ##Dividing files - use below
 write_xlsx(Comb_fil_2, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_2012_", End_year,".xlsx"), format_headers = TRUE)
-
 #
