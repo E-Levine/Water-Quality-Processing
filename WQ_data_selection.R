@@ -51,7 +51,7 @@ plot(FL_outline)
 ##Limit WQ to years of interest
 WQ_selected <- WQ_data %>% subset(ActivityStartDate >= as.Date(paste0(Begin_data, "-01-01")) & ActivityStartDate <= as.Date(paste0(End_data,"-12-31")))
 #
-##Code to limit stations if list contains more than needed: udpate for desired stations
+##Code to limit stations if list contains more than needed: update subsetting code for desired stations
 Stations_selected <- Station_locations %>% subset(Station < 6)
 #
 #
@@ -97,11 +97,31 @@ head(WQ_Stations)
 #
 saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/Station_selection/", Estuary_code, "_", Data_source,"_WQ_stations_", Begin_data, "_", End_data, "_widget.html"))
 #
-# List of any stations to include: need station ID and station of reference - keep matched on one line/column
-To_include <- data.frame(StationID = c(),
-                         Station = c())
+# List of any stations to include or exclude from selection: need station ID and station of reference (both within "")- keep matched on one line/column
+To_include <- data.frame(StationID = c("21FLCOSP_WQX-32-03", "21FLHILL_WQX-28", "21FLHILL_WQX-25"),
+                         Station = c("5", "1", "1"))
+To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-03", "21FLCOSP_WQX-CENTRAL CANAL"),
+                         Station = c("4", "4", "4"))
 #
-##Run line 105 is not including any other stations, run line 106 is include more stations to selection
+##Run line 106 if not including or excluding any stations, run line 108 to include more stations to selection
 WQ_stations_final <- WQ_Stations
-WQ_stations_final 
-WQ_data_t %>% subset(MonitoringLocationIdentifier %in% To_include$StationID) %>% mutate(Buffer = "Extra") %>% left_join(To_include)
+WQ_stations_final <- rbind(WQ_Stations, 
+                           #Stations to include
+                           WQ_data_t %>% 
+                             subset(MonitoringLocationIdentifier %in% To_include$StationID) %>% mutate(Buffer = "Extra") %>% 
+                             left_join(To_include, by = c("MonitoringLocationIdentifier" = "StationID")))  %>%
+  #Stations to exclude
+  subset(!MonitoringLocationIdentifier %in% To_exclude$StationID)
+#
+##Get coordinates into columns
+WQ_stations_final_df <- WQ_stations_final %>% st_transform(crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>%
+  mutate(Longitude = st_coordinates(.)[,1],
+         Latitide = st_coordinates(.)[,2]) %>% dplyr::select(-geometry)
+#
+##Code (3-4 letters preferred) to identify project selected data is for:
+Project_code <- c("SPV1")
+#
+##Export cleaned final data
+write_xlsx(WQ_stations_final_df, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+
+            
