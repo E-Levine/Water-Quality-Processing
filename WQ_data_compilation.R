@@ -26,13 +26,14 @@ Data_source <- c("Portal") #"Portal", "WA" , or "FIM"
 Start_year <- c("2015")
 End_year <- c("2023")
 #
-#Skip to line 47-52, then to 123 if working with FIM data
+#Skip to line 47-53, then to 133 if working with FIM data
 #
 ####Load files####
 #
 ##Read in Excel site file
 Location_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 #
+#Skip to line 47 if using WA data.
 #Read in Excel results file (for 1 file) - skip to next section if only 1 results file
 Results_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 #Read in Excel results file (for 2 files)
@@ -57,17 +58,26 @@ plot(FL_outline)
 #
 ##Select location data
 #List of columns to keep from original file for locating/mapping stations - (minimum columns that must be included to run code)
+if(Data_source == "Portal"){
 keep_site <- c("MonitoringLocationIdentifier", "OrganizationIdentifier", "OrganizationFormalName", "MonitoringLocationName", 
                "MonitoringLocationTypeName", "MonitoringLocationDescriptionText", "LatitudeMeasure", "LongitudeMeasure", 
                "HorizontalCoordinateReferenceSystemDatumName", "StateCode", "CountyCode", "ProviderName")
+} else if(Data_source == "WA"){
+  keep_site <- c("WBodyID", "WaterBodyName", "DataSource", "StationID", "StationName", "Actual_StationID", "Actual_Latitude", "Actual_Longitude", 
+                 "SampleDate", "Parameter", "Characteristic", "Result_Value", "Result_Unit")
+}
 #Subset columns and add estuary ID to column
-Location_data <- Location_data[keep_site] %>% add_column(Estuary = Estuary_code, .before = "MonitoringLocationIdentifier")
+if(Data_source == "Portal"){
+  Location_data <- Location_data[keep_site] %>% add_column(Estuary = Estuary_code, .before = "MonitoringLocationIdentifier")
+}else if(Data_source == "WA"){
+  Location_data <- Location_data[keep_site] %>% add_column(Estuary = Estuary_code, .before = "WBodyID")
+}
 #Check columns
 head(Location_data, 4)
 #
 #
 #
-##Select Results data
+##Select Results data - Portal data - Skip if using WA data
 #Subset df by columns to keep - change list in include more columns as needed 
 if(Data_source == "Portal"){
   keep_results_portal <- c("MonitoringLocationIdentifier", "ResultIdentifier", "ActivityStartDate", "ActivityStartTime/Time", 
@@ -85,7 +95,11 @@ head(Results, 4)
 #
 ####Combine data by station - limit to desired parameters####
 #
-Combined <- merge(Location_data, Results, by = "MonitoringLocationIdentifier")
+if(Data_source == "Portal"){
+  Combined <- merge(Location_data, Results, by = "MonitoringLocationIdentifier")
+} else if(Data_source == "WA"){
+  Combined <- Location_data
+}
 #
 ###Filter combined file to only include specified characteristics 
 #List of possible characteristics to select from
@@ -98,15 +112,19 @@ Characters <- c("Salinity", "Temperature, water", "Depth, bottom", "Depth, Secch
                 "Diatoms", "Stream flow, instantaneous", "Flow, severity (choice list)", "Stream stage", "Flow", "Stream flow, mean. Daily")
 #
 #Filter to only the desired characteristics and check remaining list
-Combined_filtered <- Combined %>% filter(CharacteristicName %in% Characters)
+if(Data_source == "Portal"){
+  Combined_filtered <- Combined %>% filter(CharacteristicName %in% Characters) %>% rename(Result_Unit = `ResultMeasure/MeasureUnitCode`)
+} else if (Data_source == "WA"){
+  Combined_filtered <- Combined 
+}
 #
 ##Correct basic typos in units/provide clarification - mg/L, mg/m3 = ug/L
-Combined_filtered$`ResultMeasure/MeasureUnitCode` <- str_replace(Combined_filtered$`ResultMeasure/MeasureUnitCode`, "mg/l", "mg/L")
-Combined_filtered$`ResultMeasure/MeasureUnitCode` <- str_replace(Combined_filtered$`ResultMeasure/MeasureUnitCode`, "mg/m3", "ug/L")
-Combined_filtered$`ResultMeasure/MeasureUnitCode` <- str_replace(Combined_filtered$`ResultMeasure/MeasureUnitCode`, "ug/l", "ug/L")
-Combined_filtered$`ResultMeasure/MeasureUnitCode` <- str_replace(Combined_filtered$`ResultMeasure/MeasureUnitCode`, "ft3/sec", "cfs")
+Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "mg/l", "mg/L")
+Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "mg/m3", "ug/L")
+Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "ug/l", "ug/L")
+Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "ft3/sec", "cfs")
 #
-#Confirm list of characters selected.
+#Confirm list of characters selected. - skip for WA data
 unique(Combined_filtered$CharacteristicName)
 #
 #
@@ -119,7 +137,7 @@ WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)],
                                             proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
                      "+proj=longlat +datum=WGS84 +no_defs +type=crs")
 #
-#SKIP 123-125 if NOT working with FIM data:: Assign FIM data to working data frame
+#SKIP 141-143 if NOT working with FIM data:: Assign FIM data to working data frame
 Combined_filtered <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"))) %>% 
   dplyr::select(TripID, Reference, Sampling_Date, StartTime, Depth, Temperature, pH, Latitude, Longitude, everything()) %>% filter(Longitude != "NULL") %>% mutate(Longitude = as.numeric(Longitude), Latitude = as.numeric(Latitude))
 WQ_sp <- SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
@@ -150,6 +168,15 @@ if(Data_source == "Portal"){
                          tm_dots("KML", palette = c(In = "red", Out = "black"), size = 0.25, legend.show = TRUE,
                                  popup.vars = c("StationID" = "MonitoringLocationIdentifier", "Latitude" = "LatitudeMeasure", "Longitude" = "LongitudeMeasure")) +
                          tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
+} else if(Data_source == "WA"){
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + #Estuary area
+                         tm_polygons() + 
+                         tm_shape(FL_outline) + #Outline of shoreline
+                         tm_borders()+
+                         tm_shape(Combined_data) + #Stations relation to estuary area
+                         tm_dots("KML", palette = c(In = "red", Out = "black"), size = 0.25, legend.show = TRUE,
+                                 popup.vars = c("StationID" = "StationID", "Latitude" = "Actual_Latitude", "Longitude" = "Actual_Longitude")) +
+                         tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
 } else if (Data_source == "FIM") {
   (map <- tmap_leaflet(tm_shape(Estuary_area) + #Estuary area
                          tm_polygons() + 
@@ -167,19 +194,27 @@ saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/", Estuary_code, "
 ####Clean parameter data####
 #
 Combined_filteredk <- Combined_data@data 
-#Skip 171-182 if working with FIM data
+#Skip 198-219 if working with FIM data
+if(Data_source == "Portal"){
 Combined_filteredk <- Combined_filteredk %>% 
-  mutate(ResultMeasureValue = as.numeric(ifelse(CharacteristicName == "Specific conductance" & 'ResultMeasure/MeasureUnitCode' == "mS/cm", #Convert Spec Cond mS to uS
+  mutate(ResultMeasureValue = as.numeric(ifelse(CharacteristicName == "Specific conductance" & Result_Unit == "mS/cm", #Convert Spec Cond mS to uS
                                                 ResultMeasureValue*1000, 
-                                                ifelse(CharacteristicName == "Stream flow, instantaneous" & 'ResultMeasure/MeasureUnitCode' == "ft3/s", #Convert ft3 to m3
+                                                ifelse(CharacteristicName == "Stream flow, instantaneous" & Result_Unit == "ft3/s", #Convert ft3 to m3
                                                        ResultMeasureValue*0.0283168, ResultMeasureValue))),
-         'ResultMeasure/MeasureUnitCode' = ifelse(CharacteristicName == "Salinity", "ppt",  #Change all Salinity values to 'ppt' units
+         Result_Unit = ifelse(CharacteristicName == "Salinity", "ppt",  #Change all Salinity values to 'ppt' units
                                                   ifelse(CharacteristicName == "Conductivity", "uS/cm", #Correct all Conductivity results
                                                          ifelse(CharacteristicName == "Specific conductance", "uS/cm",#Correct Specific conductance units
                                                                 ifelse(CharacteristicName == "pH", NA,  #Correct pH units
                                                                        ifelse(CharacteristicName == "Stream flow, instantaneous", "m3/s", #Correct Stream flow units
-                                                                              Combined_filtered$'ResultMeasure/MeasureUnitCode')))))) %>% 
+                                                                              Combined_filtered$Result_Unit)))))) %>% 
   dplyr::relocate(KML, .after = last_col())
+} else if(Data_source == "WA"){
+  Combined_filteredk <- Combined_filteredk %>% 
+    mutate(Result_Unit = ifelse(Characteristic == "Salinity", "ppt",
+                                ifelse(Characteristic == "pH", NA, 
+                                       ifelse(Characteristic == 'Dissolved oxygen saturation', "%", 
+                                              ifelse(Characteristic == 'Secchi disc depth', "m", Combined_filtered$Result_Unit)))))
+}
 #
 head(Combined_filteredk)
 #
