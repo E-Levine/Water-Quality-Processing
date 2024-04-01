@@ -7,7 +7,7 @@
 #Use Alt+O to collapse all sections, Alt+Shift+O to expand all sections
 #
 #Load require packages (install as necessary)
-if (!require("pacman")) install.packages("pacman")
+if (!require("pacman")) {install.packages("pacman")}
 pacman::p_unlock()
 pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
                ggmap, tibble, zoo, measurements,
@@ -49,7 +49,11 @@ plot(FL_outline)
 ####Limit data ranges####
 #
 ##Limit WQ to years of interest
+if(Data_source == "Portal"){
 WQ_selected <- WQ_data %>% subset(ActivityStartDate >= as.Date(paste0(Begin_data, "-01-01")) & ActivityStartDate <= as.Date(paste0(End_data,"-12-31")))
+} else if(Data_source == "WA"){
+  WQ_selected <- WQ_data %>% subset(SampleDate >= as.Date(paste0(Begin_data, "-01-01")) & SampleDate <= as.Date(paste0(End_data,"-12-31")))
+}
 #
 ##Code to limit stations if list contains more than needed: update subsetting code for desired stations
 Stations_selected <- Station_locations %>% subset(Station < 6)
@@ -87,15 +91,25 @@ head(WQ_Stations)
 #
 #
 #
-(map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
-                    tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
-                    tm_shape(Stations_t) + tm_dots(size = 1, legend.show = TRUE)+ #All possible stations
-                    tm_shape(WQ_data_t) + tm_dots(popup.vars = c("StationID" = "MonitoringLocationIdentifier"))+ #Reference stations
-                    tm_shape(WQ_Stations) + tm_dots(col = "Station", size = 0.25, legend.show = TRUE,
-                                                    popup.vars = c("StationID" = "MonitoringLocationIdentifier", "Station" = "Station", "Buffer" = "Buffer"))+
-                      tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
+if(Data_source == "Portal"){
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
+                       tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
+                       tm_shape(Stations_t) + tm_dots(size = 1, legend.show = TRUE)+ #All possible stations
+                       tm_shape(WQ_data_t %>% subset(KML == "In")) + tm_dots(popup.vars = c("StationID" = "MonitoringLocationIdentifier"))+ #Reference stations
+                       tm_shape(WQ_Stations %>% subset(KML == "In")) + tm_dots(col = "Station", size = 0.25, legend.show = TRUE,
+                                                       popup.vars = c("StationID" = "MonitoringLocationIdentifier", "Station" = "Station", "Buffer" = "Buffer"))+
+                       tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
+  } else if(Data_source == "WA"){
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
+                         tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
+                         tm_shape(Stations_t) + tm_dots(size = 1, legend.show = TRUE)+ #All possible stations
+                         tm_shape(WQ_data_t %>% subset(KML == "In")) + tm_dots(popup.vars = c("StationID" = "StationID"))+ #Reference stations
+                         tm_shape(WQ_Stations %>% subset(KML == "In")) + tm_dots(col = "Station", size = 0.25, legend.show = TRUE,
+                                                         popup.vars = c("StationID" = "StationID", "Station" = "Station", "Buffer" = "Buffer"))+
+                         tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
+}
 #
-saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/Station_selection/", Estuary_code, "_", Data_source,"_WQ_stations_", Begin_data, "_", End_data, "_widget.html"))
+#saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/Station_selection/", Estuary_code, "_", Data_source,"_WQ_stations_", Begin_data, "_", End_data, "_widget.html"))
 #
 # List of any stations to include or exclude from selection: need station ID and station of reference (both within "")- keep matched on one line/column
 To_include <- data.frame(StationID = c("21FLCOSP_WQX-32-03", "21FLHILL_WQX-28", "21FLHILL_WQX-25"),
@@ -103,7 +117,7 @@ To_include <- data.frame(StationID = c("21FLCOSP_WQX-32-03", "21FLHILL_WQX-28", 
 To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-03", "21FLCOSP_WQX-CENTRAL CANAL"),
                          Station = c("4", "4", "4"))
 #
-##Run line 106 if not including or excluding any stations, run line 108 to include more stations to selection
+##Run line 121 if not including or excluding any stations, run line 122 to include more stations to selection
 WQ_stations_final <- WQ_Stations
 WQ_stations_final <- rbind(WQ_Stations, 
                            #Stations to include
