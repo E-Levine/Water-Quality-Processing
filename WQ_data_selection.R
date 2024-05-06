@@ -1,6 +1,6 @@
 ####Water Quality Data Selection###
 #
-##Selection WQ stations for data from WQ Portal or Atlas 
+##Selection of WQ stations for data from WQ Portal or Atlas 
 ##Output of selected data and map
 #
 #
@@ -32,10 +32,11 @@ End_data <- c("2022")
 #
 ####Load Files#####
 #
+##Raw cleaned data
 WQ_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year,"_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 #
 #
-#Use following code to limit stations to specified distance from points (i.e., stations)
+#Fixed station locations
 Station_locations <- as.data.frame(read_excel("../Water-Quality-Processing-Data/Data/Reference_data/Stations_area_selections.xlsx", na = c("NA", " ", "", "Z")))
 #
 ##Estuary area  
@@ -55,7 +56,7 @@ WQ_selected <- WQ_data %>% subset(ActivityStartDate >= as.Date(paste0(Begin_data
   WQ_selected <- WQ_data %>% subset(SampleDate >= as.Date(paste0(Begin_data, "-01-01")) & SampleDate <= as.Date(paste0(End_data,"-12-31")))
 }
 #
-##Code to limit stations if list contains more than needed: update subsetting code for desired stations
+##Code to limit list of monitoring stations if list contains more stations than needed: update subsetting code for desired stations
 Stations_selected <- Station_locations %>% subset(Station < 6)
 #
 #
