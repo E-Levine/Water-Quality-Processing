@@ -31,9 +31,10 @@ End_year <- c("2023")
 ####Load files####
 #
 ##Read in Excel site file
-Location_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"),
+Location_data <- if(Data_source == "WA"){as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"),
                                           col_types = c("text", "text", "text", "text", "text", "text", "numeric", "numeric", "text", "date", "numeric", "text",
                                                         "text", "text", "text", "numeric", "text", "text", "text", "numeric", "text")))
+  }else {as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))}
 #
 #Skip to "Estuary area" if using WA data.
 #Read in Excel results file (for 1 file) - skip to next section if only 1 results file
