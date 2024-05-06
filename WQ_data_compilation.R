@@ -26,14 +26,16 @@ Data_source <- c("Portal") #"Portal", "WA" , or "FIM"
 Start_year <- c("2015")
 End_year <- c("2023")
 #
-#Skip to line 47-53, then to 133 if working with FIM data
+#Skip to "Estuary area", then to Mapping of stations if working with FIM data
 #
 ####Load files####
 #
 ##Read in Excel site file
-Location_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
+Location_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"),
+                                          col_types = c("text", "text", "text", "text", "text", "text", "numeric", "numeric", "text", "date", "numeric", "text",
+                                                        "text", "text", "text", "numeric", "text", "text", "text", "numeric", "text")))
 #
-#Skip to line 47 if using WA data.
+#Skip to "Estuary area" if using WA data.
 #Read in Excel results file (for 1 file) - skip to next section if only 1 results file
 Results_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 #Read in Excel results file (for 2 files)
@@ -104,6 +106,7 @@ if(Data_source == "Portal"){
 ###Filter combined file to only include specified characteristics 
 #List of possible characteristics to select from
 unique(Combined$CharacteristicName)
+unique(Combined$Characteristic)
 #
 #Assemble list of characteristics to KEEP
 Characters <- c("Salinity", "Temperature, water", "Depth, bottom", "Depth, Secchi disk depth", "Temperature, air, deg C", "Turbidity", 
@@ -137,7 +140,7 @@ WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)],
                                             proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
                      "+proj=longlat +datum=WGS84 +no_defs +type=crs")
 #
-#SKIP 141-143 if NOT working with FIM data:: Assign FIM data to working data frame
+#SKIP to CRS check  if NOT working with FIM data:: Assign FIM data to working data frame
 Combined_filtered <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"))) %>% 
   dplyr::select(TripID, Reference, Sampling_Date, StartTime, Depth, Temperature, pH, Latitude, Longitude, everything()) %>% filter(Longitude != "NULL") %>% mutate(Longitude = as.numeric(Longitude), Latitude = as.numeric(Latitude))
 WQ_sp <- SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
@@ -218,7 +221,7 @@ Combined_filteredk <- Combined_filteredk %>%
 #
 head(Combined_filteredk)
 #
-#
+#Use next 2 lines if data needs to be divided due to size. Pick date and update for use.
 Comb_fil_1 <- Combined_filteredk %>% filter(ActivityStartDate < "2012-01-01")
 Comb_fil_2 <- Combined_filteredk %>% filter(ActivityStartDate >= "2012-01-01")
 #
