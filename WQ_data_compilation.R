@@ -1,4 +1,4 @@
-####Water Quality Data Compilation###
+####Water Quality Data Compilation and Cleaning###
 #
 ##Compile WQ data from WQ Portal or Atlas - Select parameters, combine station and WQ data
 ##Output of cleaned data
