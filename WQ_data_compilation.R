@@ -127,6 +127,7 @@ Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "mg/
 Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "mg/m3", "ug/L")
 Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "ug/l", "ug/L")
 Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "ft3/sec", "cfs")
+Combined_filtered$ResultMeasureValue <- str_replace(Combined_filtered$ResultMeasureValue, "\\*Non-detect", "NA")
 #
 #Confirm list of characters selected. - skip for WA data
 unique(Combined_filtered$CharacteristicName)
@@ -201,23 +202,24 @@ Combined_filteredk <- Combined_data@data
 #Skip 198-219 if working with FIM data
 if(Data_source == "Portal"){
 Combined_filteredk <- Combined_filteredk %>% 
-  mutate(ResultMeasureValue = as.numeric(ifelse(CharacteristicName == "Specific conductance" & Result_Unit == "mS/cm", #Convert Spec Cond mS to uS
-                                                ResultMeasureValue*1000, 
-                                                ifelse(CharacteristicName == "Stream flow, instantaneous" & Result_Unit == "ft3/s", #Convert ft3 to m3
-                                                       ResultMeasureValue*0.0283168, ResultMeasureValue))),
-         Result_Unit = ifelse(CharacteristicName == "Salinity", "ppt",  #Change all Salinity values to 'ppt' units
-                                                  ifelse(CharacteristicName == "Conductivity", "uS/cm", #Correct all Conductivity results
-                                                         ifelse(CharacteristicName == "Specific conductance", "uS/cm",#Correct Specific conductance units
-                                                                ifelse(CharacteristicName == "pH", NA,  #Correct pH units
-                                                                       ifelse(CharacteristicName == "Stream flow, instantaneous", "m3/s", #Correct Stream flow units
-                                                                              Combined_filtered$Result_Unit)))))) %>% 
+  mutate(ResultMeasureValue = as.numeric(ResultMeasureValue)) %>%
+  mutate(ResultMeasureValue = case_when(CharacteristicName == "Specific conductance" & Result_Unit == "mS/cm" ~  ResultMeasureValue*1000, #Convert Spec Cond mS to uS
+                                        CharacteristicName == "Stream flow, instantaneous" & Result_Unit == "ft3/s" ~ ResultMeasureValue*0.0283168, #Convert ft3 to m3
+                                        TRUE ~ ResultMeasureValue),
+         Result_Unit = case_when(CharacteristicName == "Salinity" ~ "ppt",  #Change all Salinity values to 'ppt' units
+                                 CharacteristicName == "Conductivity" ~ "uS/cm", #Correct all Conductivity results
+                                 CharacteristicName == "Specific conductance" ~ "uS/cm",#Correct Specific conductance units
+                                 CharacteristicName == "pH" ~ NA,  #Correct pH units
+                                 CharacteristicName == "Stream flow, instantaneous" ~ "m3/s", #Correct Stream flow units
+                                 TRUE ~ Result_Unit)) %>% 
   dplyr::relocate(KML, .after = last_col())
 } else if(Data_source == "WA"){
   Combined_filteredk <- Combined_filteredk %>% 
-    mutate(Result_Unit = ifelse(Characteristic == "Salinity", "ppt",
-                                ifelse(Characteristic == "pH", NA, 
-                                       ifelse(Characteristic == 'Dissolved oxygen saturation', "%", 
-                                              ifelse(Characteristic == 'Secchi disc depth', "m", Combined_filtered$Result_Unit)))))
+    mutate(Result_Unit = case_when(Characteristic == "Salinity" ~ "ppt",
+                                   Characteristic == "pH" ~ NA, 
+                                   Characteristic == 'Dissolved oxygen saturation' ~ "%", 
+                                   Characteristic == 'Secchi disc depth' ~ "m", 
+                                   TRUE ~ Result_Unit))
 }
 #
 head(Combined_filteredk)
