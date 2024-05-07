@@ -131,7 +131,7 @@ WQ_stations_final <- rbind(WQ_Stations,
 ##Get coordinates into columns
 WQ_stations_final_df <- WQ_stations_final %>% st_transform(crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>%
   mutate(Longitude = st_coordinates(.)[,1],
-         Latitide = st_coordinates(.)[,2]) %>% dplyr::select(-geometry)
+         Latitude = st_coordinates(.)[,2]) %>% dplyr::select(-geometry)
 #
 ##Code (3-4 letters preferred) to identify project selected data is for:
 Project_code <- c("SPV1")
