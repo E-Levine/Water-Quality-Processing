@@ -51,6 +51,7 @@ rsconnect/
 # Data folder - ignore all Raw_cleaned and Raw_Data. 
 **/Data/Raw_cleaned
 **/Data/Raw_data
+**/Data/Compiled_data
 
 # Maps folder - ignore all widget maps
 **/Maps/*.html
