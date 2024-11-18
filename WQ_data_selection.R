@@ -26,18 +26,18 @@ Start_year <- c("2015")
 End_year <- c("2023")
 #
 ##Years of desired data:
-Begin_data <- c("2018")
-End_data <- c("2022")
+Begin_data <- c("2015")
+End_data <- c("2023")
 #
 #
 ####Load Files#####
 #
 ##Raw cleaned data
-WQ_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year,"_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
+WQ_data <- as.data.frame(read_excel(paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year,"_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 #
 #
 #Fixed station locations
-Station_locations <- as.data.frame(read_excel("../Water-Quality-Processing-Data/Data/Reference_data/Stations_area_selections.xlsx", na = c("NA", " ", "", "Z")))
+Station_locations <- as.data.frame(read_excel("Data/Reference_data/Stations_area_selections.xlsx", na = c("NA", " ", "", "Z")))
 #
 ##Estuary area  
 Estuary_area <- st_read(paste0("KML/", Estuary_code, ".kml"))
@@ -56,12 +56,12 @@ WQ_selected <- WQ_data %>% subset(ActivityStartDate >= as.Date(paste0(Begin_data
   WQ_selected <- WQ_data %>% subset(SampleDate >= as.Date(paste0(Begin_data, "-01-01")) & SampleDate <= as.Date(paste0(End_data,"-12-31")))
 }
 #
-##Code to limit list of monitoring stations if list contains more stations than needed: update subsetting code for desired stations
+##Code to limit list of monitoring stations if list contains more stations than needed: update sub-setting code for desired stations
 Stations_selected <- Station_locations %>% subset(Station < 6)
 #
 #
 #
-####Station selection by distance####
+####Station selection by distance - run only if selecting stations based on proximity to established locations ("Station_locations")####
 #
 F_Distance <- c(1500) #distance in meters
 S_Distance <- c(3000) #secondary distance for additional search area of potential stations 
@@ -110,7 +110,7 @@ if(Data_source == "Portal"){
                          tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
 }
 #
-#saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/Station_selection/", Estuary_code, "_", Data_source,"_WQ_stations_", Begin_data, "_", End_data, "_widget.html"))
+#saveWidget(map, paste0("Maps/Station_selection/", Estuary_code, "_", Data_source,"_WQ_stations_", Begin_data, "_", End_data, "_widget.html"))
 #
 # List of any stations to include or exclude from selection: need station ID and station of reference (both within "")- keep matched on one line/column
 To_include <- data.frame(StationID = c("21FLCOSP_WQX-32-03", "21FLHILL_WQX-28", "21FLHILL_WQX-25"),
@@ -138,5 +138,67 @@ Project_code <- c("SPV1")
 #
 ##Export cleaned final data
 write_xlsx(WQ_stations_final_df, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
-
-            
+#
+#           
+#
+#
+####Output all stations####
+#
+WQ_data_t <- st_as_sf(WQ_selected, coords = c(9,8), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+#
+##Convert FL_outline to same CRS
+FL_outline2 <- FL_outline %>% st_transform(crs = st_crs(3086))
+##Determine stations that overlap with FL shape (land) and don't overlap (water)
+Stations_land <- WQ_data_t[lengths(st_intersects(WQ_data_t, FL_outline2))>0,] %>% mutate(Location = "Land")
+Stations_water <- WQ_data_t[!lengths(st_intersects(WQ_data_t, Stations_land)),] %>% mutate(Location = "Water")
+##Join into final output dataframe of all stations
+WQ_Stations <- rbind(Stations_water, Stations_land) %>% mutate(Location = as.factor(Location))
+head(WQ_Stations)
+#
+if(Data_source == "Portal"){
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
+                         tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
+                         tm_shape(WQ_data_t %>% subset(KML == "In")) + tm_dots(popup.vars = c("StationID" = "MonitoringLocationIdentifier"))+ #Reference stations
+                         tm_shape(WQ_Stations %>% subset(Location == "Water")) + tm_dots(col = "KML", size = 0.25, legend.show = TRUE,
+                                                                                 popup.vars = c("StationID" = "MonitoringLocationIdentifier", "Location" = "Location"))+
+                         tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
+} else if(Data_source == "WA"){
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
+                         tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
+                         tm_shape(WQ_data_t %>% subset(KML == "In")) + tm_dots(popup.vars = c("StationID" = "StationID"))+ #Reference stations
+                         tm_shape(WQ_Stations %>% subset(Location == "Water")) + tm_dots(col = "KML", size = 0.25, legend.show = TRUE,
+                                                                                 popup.vars = c("StationID" = "StationID", "Location" = "Location"))+
+                         tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
+}
+#
+#saveWidget(map, paste0("Maps/Station_selection/", Estuary_code, "_", Data_source,"_WQ_stations_", Begin_data, "_", End_data, "_widget.html"))
+#
+# List of any stations to include or exclude from selection: need station ID within ""
+To_include <- data.frame(StationID = c("21FLCOSP_WQX-32-03", "21FLHILL_WQX-28", "21FLHILL_WQX-25"))
+To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0169", "21FLPDEM_WQX-24-07", "21FLTPA_WQX-G5SW0187", "21FLPDEM_WQX-24-01", "21FLTPA_WQX-G5SW0152", "21FLPDEM_WQX-19-02"))
+#
+##Run to include and/or exclude based on lines above
+if(exists("To_include") & !exists("To_exclude")){
+  WQ_stations_final <- rbind(WQ_Stations, WQ_data_t %>% subset(MonitoringLocationIdentifier %in% To_include$StationID) %>% mutate(Buffer = "Extra") %>% 
+                               left_join(To_include, by = c("MonitoringLocationIdentifier" = "StationID")))
+  } else if(!exists("To_include") & exists("To_exclude")){
+    WQ_stations_final <- WQ_Stations %>% subset(!MonitoringLocationIdentifier %in% To_exclude$StationID)
+  } else if(exists("To_include") & exists("To_exclude")){
+    WQ_stations_final <- rbind(WQ_Stations, WQ_data_t %>% subset(MonitoringLocationIdentifier %in% To_include$StationID) %>% mutate(Buffer = "Extra") %>% 
+                                 left_join(To_include, by = c("MonitoringLocationIdentifier" = "StationID"))) %>% 
+      subset(!MonitoringLocationIdentifier %in% To_exclude$StationID)
+  } else {
+    WQ_stations_final <- WQ_Stations} 
+#
+# 
+#
+##Get coordinates into columns
+WQ_stations_final_df <- WQ_stations_final %>% st_transform(crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>%
+  mutate(Longitude = st_coordinates(.)[,1],
+         Latitude = st_coordinates(.)[,2]) %>% dplyr::select(-geometry)
+#
+##Code (3-4 letters preferred) to identify project selected data is for:
+Project_code <- c("AllTB")
+#
+##Export cleaned final data
+write_xlsx(WQ_stations_final_df, paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
