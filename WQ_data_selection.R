@@ -137,7 +137,7 @@ WQ_stations_final_df <- WQ_stations_final %>% st_transform(crs = "+proj=longlat 
 Project_code <- c("SPV1")
 #
 ##Export cleaned final data
-write_xlsx(WQ_stations_final_df, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+write_xlsx(WQ_stations_final_df, paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
 #
 #           
 #
@@ -201,4 +201,4 @@ WQ_stations_final_df <- WQ_stations_final %>% st_transform(crs = "+proj=longlat 
 Project_code <- c("AllTB")
 #
 ##Export cleaned final data
-write_xlsx(WQ_stations_final_df, paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+write_xlsx(WQ_stations_final_df, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)

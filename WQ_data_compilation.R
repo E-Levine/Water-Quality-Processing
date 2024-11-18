@@ -31,19 +31,19 @@ End_year <- c("2023")
 ####Load files####
 #
 ##Read in Excel site file
-Location_data <- if(Data_source == "WA"){as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"),
+Location_data <- if(Data_source == "WA"){as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"),
                                           col_types = c("text", "text", "text", "text", "text", "text", "numeric", "numeric", "text", "date", "numeric", "text",
                                                         "text", "text", "text", "numeric", "text", "text", "text", "numeric", "text")))
-  }else {as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))}
+  }else {as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))}
 #
 #Skip to "Estuary area" if using WA data.
 #Read in Excel results file (for 1 file) - skip to next section if only 1 results file
-Results_data <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
+Results_data <- as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 #Read in Excel results file (for 2 files)
-Results1 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", "2007",".xlsx"), na = c("NA", " ", "", "Z")))
-Results2 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2008", "_", "2014",".xlsx"), na = c("NA", " ", "", "Z")))
-Results3 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2015", "_", "2019",".xlsx"), na = c("NA", " ", "", "Z")))
-Results4 <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2020", "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
+Results1 <- as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", "2007",".xlsx"), na = c("NA", " ", "", "Z")))
+Results2 <- as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2008", "_", "2014",".xlsx"), na = c("NA", " ", "", "Z")))
+Results3 <- as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2015", "_", "2019",".xlsx"), na = c("NA", " ", "", "Z")))
+Results4 <- as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", "2020", "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 Results_data <- rbind(Results1, Results2, Results3, Results4)
 #If more files are needed, copy and edit the proper number of Results# lines of code and make sure to add all versions to the Results_data <- rbind() line.
 #
@@ -88,7 +88,6 @@ if(Data_source == "Portal"){
   Results <- Results_data[keep_results_portal]} else{
     keep_results_atlas <- "TEMP"
     Results <- Results_data[keep_results_atlas]}
-#
 #
 #
 #Confirm desired columns and naming
@@ -143,7 +142,7 @@ WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)],
                      "+proj=longlat +datum=WGS84 +no_defs +type=crs")
 #
 #SKIP to CRS check  if NOT working with FIM data:: Assign FIM data to working data frame
-Combined_filtered <- as.data.frame(read_excel(paste0("../Water-Quality-Processing-Data/Data/Raw_data/", Estuary_code, "_", Data_source,"_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"))) %>% 
+Combined_filtered <- as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"))) %>% 
   dplyr::select(TripID, Reference, Sampling_Date, StartTime, Depth, Temperature, pH, Latitude, Longitude, everything()) %>% filter(Longitude != "NULL") %>% mutate(Longitude = as.numeric(Longitude), Latitude = as.numeric(Latitude))
 WQ_sp <- SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
 #
@@ -232,8 +231,8 @@ Comb_fil_2 <- Combined_filteredk %>% filter(ActivityStartDate >= "2012-01-01")
 ####Save filtered data####
 #
 #
-write_xlsx(Combined_filteredk, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_", Start_year, "_", End_year,".xlsx"), format_headers = TRUE)
+write_xlsx(Combined_filteredk, paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_", Start_year, "_", End_year,".xlsx"), format_headers = TRUE)
 #
 ##Dividing files - use below
-write_xlsx(Comb_fil_2, paste0("../Water-Quality-Processing-Data/Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_2012_", End_year,".xlsx"), format_headers = TRUE)
+write_xlsx(Comb_fil_2, paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_2012_", End_year,".xlsx"), format_headers = TRUE)
 #
