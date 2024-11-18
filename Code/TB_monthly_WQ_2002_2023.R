@@ -11,7 +11,7 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_unlock()
 pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
                ggmap, tibble, zoo, measurements,
-               sf, raster, spData, 
+               sf, raster, spData, psych,
                tmap, tmaptools, htmltools, htmlwidgets,
                install = TRUE) 
 #
@@ -79,7 +79,26 @@ Compiled_df$Type <- recode_factor(Compiled_df$Type, Tempature = "Temperature", '
   dplyr::select(Month, Type, Measure) %>% group_by(Month, Type) %>% summarise(min = min(Measure, na.rm = T), max = max(Measure, na.rm = T), mean = mean(Measure, na.rm = T)) %>%
   gather(Measurement, Value, -Month, -Type) %>% mutate(Helper = paste(Type, Measurement, sep = "_")) %>% dplyr::select(-Type, -Measurement) %>%
   spread(Helper, Value))
+#
+(WQ_data <- Compiled_df %>% subset(Type %in% c("Temperature", "Salinity", "pH", "DO_mgL", "Secchi", "Turbidity")) %>% 
+  group_by(Year, Month, Station, Type) %>% summarise(Mean = mean(Measure, na.rm = T)) %>% spread(Type, Mean))
+#
+#
+#
+#
+####Comparisons####
+#
+##Training and test sets
+set.seed(4321)
+sample <- sample(nrow(WQ_data[1:9]), size = nrow(WQ_data[1:9]) * 0.7)
+WQ_train <- WQ_data[sample, 1:9] %>% ungroup() %>% dplyr::select(-Year, -Station)
+WQ_test <- WQ_data[-sample, 1:9] %>% ungroup() %>% dplyr::select(-Year, -Station)
+#
+##Check correlations between variables
+pairs.panels(WQ_train[,-1], gap = 0, pch = 21)
+#Nothing over 0.49
+#
 
-Compiled_df %>% subset(Type %in% c("Temperature", "Salinity", "pH", "DO_mgL", "Secchi", "Turbidity")) %>% 
-  dplyr::select(Month, Type, Measure) %>% spread(Type, Measure)
+#
+#
 #
