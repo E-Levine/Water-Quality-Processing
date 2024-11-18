@@ -1,0 +1,12 @@
+#Codeowners
+
+#Default owners for everything in main
+* @E-Levine
+
+#Default owners by Site code dsignation uses in file names.
+*SL* @E-Levine
+*LX* @E-Levine
+*LW* @E-Levine
+*CR* @E-Levine
+*TB* @E-Levine
+*AB* @matthewdavis2985
