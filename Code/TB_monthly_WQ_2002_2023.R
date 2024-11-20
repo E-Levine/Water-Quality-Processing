@@ -13,7 +13,8 @@ pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
                ggmap, tibble, zoo, measurements,
                sf, raster, spData, psych,
                tmap, tmaptools, htmltools, htmlwidgets,
-               factoextra, devtools, ggbiplot, corrplot, Hmisc,
+               factoextra, devtools, ggbiplot, corrplot, Hmisc, #PCA
+               dummy, GGally, cluster, fpc, #factoextra
                install = TRUE) 
 #
 #
@@ -137,8 +138,6 @@ ggbiplot(model, obs.scale = 1, var.scale = 1, ellipse = TRUE, circle = TRUE, ell
 #
 (WQ_data <- Compiled_df_c %>% ungroup() %>% drop_na(Measure) %>% group_by(Year, Month, Station, Type) %>% 
     summarise(Value = mean(Measure, na.rm = T)) %>% spread(Type, Value) %>% ungroup() %>% drop_na() %>% dplyr::select(-Year, -Station))
-#(WQ_data_months <- WQ_data$Month)
-#(WQ_data_values <- WQ_data[4:9])
 #
 ##Select variables
 #(corr_WQ <- WQ_data_values)
@@ -169,5 +168,78 @@ fviz_pca_biplot(WQ_pca,
 #
 #
 #
-####Cluster anlayses####
-
+####Cluster analyses####
+#
+##Individual measurements
+(WQ_data <- Compiled_df_c %>% ungroup() %>% drop_na(Measure) %>% group_by(Year, Month, Station, Type) %>% 
+   summarise(Value = mean(Measure, na.rm = T)) %>% spread(Type, Value) %>% ungroup() %>% drop_na() %>% dplyr::select(-Year, -Station))
+##Parameters interested in: mean and range for all parameters 
+(WQ_params <- WQ_data %>% gather("Type", "Value", -Month) %>% group_by(Month, Type) %>%
+    summarise(mean = mean(Value), range = max(Value)-min(Value)) %>% gather("Meas", "Value", -(Month:Type)) %>% 
+    unite(temp, Type, Meas) %>% spread(temp, Value))
+WQ_params %>% summary()
+#
+##Check variables
+(cWQ <- cor(WQ_params[-1], method = "s"))
+ctestWQ <- cor.mtest(WQ_params[-1], conf.level = 0.95)
+corrplot(cor(WQ_params[-1], method = "s"), p.mat = ctestWQ$p, method = 'circle', type = 'lower', insig='blank',
+         addCoef.col ='black', number.cex = 0.8, order = 'AOE', diag=FALSE)
+rcorr(as.matrix(WQ_params[-1]), type = "spearman") #p-values of the correlations: 
+#>= 0.8: Sal_mean/pH_mean, ph_mean/Secchi_mean, Secchi_mean/DO_mean
+#<=-0.8: DO_mean/Temp_mean, DO_mean/Turb_mean, Temp_mean/Turb_mean
+#Drop Turb_mean, DO_mean, pH_mean
+#
+#Scale data
+(WQ_scaled <- cbind(WQ_params[1], scale(WQ_params[-1]))) 
+#
+#Want k = 4 (seasons), but see what is possible
+tot_withinss <- map_dbl(1:11, function(k){
+  model <- kmeans(x = WQ_params[,-1], centers = k)
+  model$tot.withinss
+})
+elbow_df <- data.frame(k = 1:11, tot_withinss = tot_withinss)
+ggplot(elbow_df, aes(k, tot_withinss)) + geom_line() + scale_x_continuous(breaks = seq(0, 10, by = 2)) 
+#k = 4 is good
+#
+WQ_dist <- dist(WQ_scaled[-1])
+set.seed(4321)
+WQ_k <- kmeans(WQ_scaled, centers = 4, nstart = 20)
+#(WQ_scaled <- data.frame(WQ_scaled) %>% mutate(k_Cluster = as.factor(WQ_k$cluster)))
+(WQ_fin <- data.frame(WQ_params) %>% mutate(cluster = as.factor(WQ_k$cluster)))
+#ggpairs(WQ_scaled, aes(colour = k_Cluster, alpha = 0.4))
+#
+fviz_cluster(WQ_k, data = WQ_params[-1], palette = "jco", pointsize = 2.5,
+             repel = TRUE, ellipse = TRUE, ellipse.type = 'confidence') + theme_bw()
+#
+#Validation
+fviz_silhouette(cluster::silhouette(WQ_k$cluster, WQ_dist), palette = "jco")
+#
+WQ_comps <- column_to_rownames(WQ_fin[1:12], "Month")
+library(clValid)
+WQ_comps_1 <- clValid(WQ_comps, 2:6, clMethods = c("kmeans", "hierarchical"), validation = "internal")
+optimalScores(WQ_comps_1)
+WQ_comps_2 <- clValid(WQ_comps, 2:6, clMethods = c("kmeans", "hierarchical"), validation = "stability")
+optimalScores(WQ_comps_2)
+#
+fviz_cluster(WQ_k, data = WQ_params[-1], palette = "jco", pointsize = 2.5,
+             repel = TRUE, ellipse = TRUE, ellipse.type = 'confidence') + 
+  theme_bw() + theme(panel.grid = element_blank())+
+  geom_hline(yintercept = 0, linetype = "dashed") + geom_vline(xintercept = 0, linetype = "dashed")
+#
+WQ_fin %>% dplyr::select(Month, cluster, contains("mean")) %>% 
+  gather("Type", "mean", -Month, -cluster) %>% mutate(Type = str_remove(Type, "_mean")) %>%
+  ggplot(aes(Month, mean))+ geom_line(aes(group = 1), linetype = "dashed")+
+  geom_point(aes(color = cluster))+  geom_line(aes(color = cluster, group = cluster), linewidth = 1.25)+
+  lemon::facet_rep_grid(Type~., scales = "free_y") + theme_bw()+
+  geom_point(data = WQ_fin %>% dplyr::select(Month, cluster, contains("mean")) %>% 
+               gather("Type", "mean", -Month, -cluster) %>% mutate(Type = str_remove(Type, "_mean")) %>% 
+               group_by(cluster, Type) %>% summarise(mean = mean(mean)) %>% 
+               mutate(Helper = as.factor(case_when(cluster == "4" ~ "02", cluster == "1" ~ "05",
+                                                   cluster == "2" ~ "08", TRUE ~ "11"))),
+             aes(Helper, mean, color = cluster), size = 4)
+##
+##
+##Spring - Jan-Mar
+##Summer - Apr-Jul
+##Fall - Aug-Sept
+##Winter - Oct-Dec
