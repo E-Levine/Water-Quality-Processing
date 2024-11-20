@@ -86,7 +86,8 @@ Compiled_df_c <- Compiled_df %>% subset(Type %in% c("Temperature", "Salinity", "
                              Type == "Depth" & Unit == "ft" ~ Measure * 0.3048, #Convert to meters
                              Type == "DO_mgL" & Measure > 20 ~ NA, #Anything above 20 possibly %? - remove
                              Type == "Salinity" & Measure > 55 ~ NA, 
-                             Type == "Turbidity" & Measure > 1000 ~ NA, 
+                             Type == "Salinity" & Measure == 0 ~ NA, 
+                             Type == "Turbidity" & Measure > 200 ~ NA, 
                              TRUE ~ Measure)) %>%
   mutate(Unit = case_when(Type == "Secchi" | Type == "Depth" ~ "m", TRUE ~ Unit))
 #
@@ -105,13 +106,15 @@ Compiled_df_c <- Compiled_df %>% subset(Type %in% c("Temperature", "Salinity", "
 #
 #
 #
-####Trial 1####
+####PCA Fun-means and individuals####
+#
+
+##Means
+#Summarize by Month, Year, Station
+(WQ_means <- Compiled_df_c %>% 
+   group_by(Year, Month, Station, Type) %>% summarise(Mean = mean(Measure, na.rm = T)) %>% spread(Type, Mean))
 #
 #
-##Check correlations between variables
-pairs.panels(Monthly_summ[,-1], gap = 0, pch = 21)
-#Turbidity & Secchi - 0.74 -- remove Secchi?
-#pH and DO_mgL - 0.78
 #
 (Mon_summ <- Monthly_summ %>% #remove_rownames() %>% column_to_rownames("Month") %>% 
     dplyr::select(-contains("Secchi")))
@@ -126,38 +129,45 @@ ggbiplot(model, obs.scale = 1, var.scale = 1, ellipse = TRUE, circle = TRUE, ell
 #
 #
 #
-####Comparisons####
+##Individuals
 #
 #Summarize by Month, Year, Station
-(WQ_data <- Compiled_df_c %>% 
+(WQ_means <- Compiled_df_c %>% 
    group_by(Year, Month, Station, Type) %>% summarise(Mean = mean(Measure, na.rm = T)) %>% spread(Type, Mean))#
 #
+(WQ_data <- Compiled_df_c %>% ungroup() %>% drop_na(Measure) %>% group_by(Year, Month, Station, Type) %>% 
+    summarise(Value = mean(Measure, na.rm = T)) %>% spread(Type, Value) %>% ungroup() %>% drop_na() %>% dplyr::select(-Year, -Station))
+#(WQ_data_months <- WQ_data$Month)
+#(WQ_data_values <- WQ_data[4:9])
+#
 ##Select variables
-(corr_WQ <- WQ_data %>% ungroup() %>% dplyr::select(Temperature:Turbidity) %>% drop_na())
-(cWQ <- cor(corr_WQ, method = "s"))
-ctestWQ <- cor.mtest(corr_WQ, conf.level = 0.95)
-corrplot(cor(corr_WQ, method = "s"), p.mat = ctestWQ$p, method = 'circle', type = 'lower', insig='blank',
+#(corr_WQ <- WQ_data_values)
+(cWQ <- cor(WQ_data[-1], method = "s"))
+ctestWQ <- cor.mtest(WQ_data[-1], conf.level = 0.95)
+corrplot(cor(WQ_data[-1], method = "s"), p.mat = ctestWQ$p, method = 'circle', type = 'lower', insig='blank',
          addCoef.col ='black', number.cex = 0.8, order = 'AOE', diag=FALSE)
-rcorr(as.matrix(corr_WQ), type = "spearman") #p-values of the correlations: ph & Salinity, Secchi & Salinity 
-#Removing pH and Secchi
+rcorr(as.matrix(WQ_data[-1]), type = "spearman") #p-values of the correlations: ph & Salinity, Secchi & Salinity 
+#Correlations between salinity and pH and Secchi - PCA can handle but removing for now
+(WQ_fin <- WQ_data %>% dplyr::select(-pH, -Secchi))
 #
 #
-(WQ_fin <- WQ_data %>% ungroup() %>% dplyr::select(Month, Temperature, DO_mgL, Salinity, Turbidity) %>% 
-    group_by(Month) %>% summarise_all(mean, na.rm = T))
-##Training and test sets
-#set.seed(4321)
-#sample <- sample(nrow(WQ_fin[1:9]), size = nrow(WQ_data[1:9]) * 0.7)
-#WQ_train <- WQ_data[sample, 1:9] %>% ungroup() %>% dplyr::select(-Year, -Station)
-#WQ_test <- WQ_data[-sample, 1:9] %>% ungroup() %>% dplyr::select(-Year, -Station)
-#
-WQ_pca <- prcomp(WQ_fin[,-1], center = TRUE, scale. = TRUE)
+WQ_pca <- prcomp(~Temperature + Salinity + DO_mgL  + Turbidity, data = WQ_fin, center = TRUE, scale. = TRUE)
 str(WQ_pca)
 summary(WQ_pca)
-ggbiplot(WQ_pca, 
-         labels = WQ_fin$Month, labels.size = 6,
+ggscreeplot(WQ_pca)
+ggbiplot(WQ_pca, groups = WQ_data$Month, alpha = 0.4, 
+         #scale = 1, #0-form biplot, 1-covariance biplot
          obs.scale = 1, 
-         var.scale = 1, varname.size = 4,
+         var.scale = 1, varname.size = 4.5, var.axes = TRUE,
          circle = TRUE) + theme_bw()
 #
+WQ_pca$rotation #"loadings"
 #
 #
+fviz_pca_biplot(WQ_pca, 
+                geom = "point", habillage = WQ_fin$Month, addEllipses = T, ellipse.level = 0.95)
+#
+#
+#
+####Cluster anlayses####
+
