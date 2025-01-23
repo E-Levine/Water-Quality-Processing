@@ -54,5 +54,5 @@ rsconnect/
 **/Data/Compiled_data
 
 # Maps folder - ignore all widget maps
-**/Maps/*.html
+**/Maps/*
 **/Maps/*/*widget_files*/*
