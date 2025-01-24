@@ -18,7 +18,7 @@ pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
 #
 #
 ###Setup
-Estuary_code <- c("SL") #Two letter estuary code
+Estuary_code <- c("LX") #Two letter estuary code
 Data_source <- c("Portal") #"Portal" or "WA". Code not currently updated for FIM"
 #
 #Years of possible data:
@@ -223,17 +223,19 @@ rm(temp_station, Selected_WQstation_info, Selected_WQstations, Selected_data)
 #
 #Widget output to identify stations.
 if(Data_source == "Portal"){
+  WQ_closest_selected_info <- WQ_closest_selected %>% dplyr::select(MonitoringLocationIdentifier, LocationID, Distance) %>% unique() %>% group_by(MonitoringLocationIdentifier) %>% summarise(LocationID = paste(LocationID, collapse = ", "), Distance = paste(Distance, collapse = ", "))
   (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
                          tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
-                         tm_shape(WQ_locations_t) + tm_dots(size = 0.5, legend.show = FALSE, popup.vars = c("StationID" = "MonitoringLocationIdentifier"))+ #Possible stations
-                         tm_shape(WQ_closest_selected %>% dplyr::select(MonitoringLocationIdentifier, LocationID, Distance) %>% unique() %>% group_by(MonitoringLocationIdentifier) %>% summarise(LocationID = paste(LocationID, collapse = ", "), Distance = paste(Distance, collapse = ", "))) + 
+                         tm_shape(WQ_locations_t) + tm_dots(size = 0.5, legend.show = FALSE, popup.vars = c("Latitude" = "Lat_n", "Longitude" = "Lon_n"))+ #Possible stations
+                         tm_shape(WQ_closest_selected_info) + 
                           tm_dots(col = "red", size = 0.75, legend.show = TRUE, popup.vars = c("StationID" = "MonitoringLocationIdentifier", "LocationID" = "LocationID", "Distance" = "Distance"))+
                          tm_layout(main.title = paste(Estuary_code, Data_source, "Closest", Stations_N,  "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
 } else if(Data_source == "WA"){
+  WQ_closest_selected_info <- WQ_closest_selected %>% dplyr::select(StationID, LocationID, Distance) %>% unique() %>% group_by(StationID) %>% summarise(LocationID = paste(LocationID, collapse = ", "), Distance = paste(Distance, collapse = ", "))
   (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
                          tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
-                         tm_shape(WQ_locations_t) + tm_dots(size = 0.5, legend.show = FALSE, popup.vars = c("StationID" = "StationID"))+ #Possible stations
-                         tm_shape(WQ_closest_selected %>% dplyr::select(StationID, LocationID, Distance) %>% unique() %>% group_by(StationID) %>% summarise(LocationID = paste(LocationID, collapse = ", "), Distance = paste(Distance, collapse = ", "))) + 
+                         tm_shape(WQ_locations_t) + tm_dots(size = 0.5, legend.show = FALSE, popup.vars = c("Latitude" = "Lat_n", "Longitude" = "Lon_n"))+ #Possible stations
+                         tm_shape(WQ_closest_selected_info) + 
                           tm_dots(col = "red", size = 0.75, legend.show = TRUE, popup.vars = c("StationID" = "StationID", "LocationID" = "LocationID", "Distance" = "Distance"), popup.format = list())+
                          tm_layout(main.title = paste(Estuary_code, Data_source, "Closest", Stations_N, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
 } else {
