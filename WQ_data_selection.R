@@ -22,12 +22,12 @@ Estuary_code <- c("SL") #Two letter estuary code
 Data_source <- c("Portal") #"Portal" or "WA". Code not currently updated for FIM"
 #
 #Years of possible data:
-Start_year <- c("2000")
-End_year <- c("2022")
+Start_year <- c("2023")
+End_year <- c("2024")
 #
 ##Years of desired data:
-Begin_data <- c("2015")
-End_data <- c("2022")
+Begin_data <- c("2023")
+End_data <- c("2024")
 #
 #
 ####Load Files#####
@@ -156,8 +156,8 @@ WQ_data_t <- st_as_sf(WQ_selected, coords = c(9,8), crs = "+proj=longlat +datum=
 #
 if(Data_source == "Portal"){
   #List of possible stations and their coordinates:
-  WQ_locations_t <- st_as_sf(WQ_selected %>% dplyr::select(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure) %>% distinct(),
-                             coords = c(3,2), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+  WQ_locations_t <- st_as_sf(WQ_selected %>% dplyr::select(LatitudeMeasure, LongitudeMeasure) %>% distinct() %>% mutate(Lat_n = LatitudeMeasure, Lon_n = LongitudeMeasure),
+           coords = c(2,1), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
   #
   #Empty data frame to fill with selected data
   WQ_closest_selected <- data.frame()
@@ -167,11 +167,13 @@ if(Data_source == "Portal"){
     temp_station <- Stations_t$geometry[i]
     Selected_WQstation_info <- st_nn(temp_station, WQ_locations_t, k = Stations_N, maxdist = maxDist_m, returnDist = TRUE)
     #Create data frame of information of selected stations
-    Selected_WQstations <- data.frame(MonitoringLocationIdentifier = WQ_locations_t$MonitoringLocationIdentifier[Selected_WQstation_info$nn[[1]]], #Station IDs of closest stations
+    Selected_WQstations <- data.frame(Latitude_match = WQ_locations_t$Lat_n[Selected_WQstation_info$nn[[1]]],
+                                      Longitude_match = WQ_locations_t$Lon_n[Selected_WQstation_info$nn[[1]]],
                                       Distance = Selected_WQstation_info$dist[[1]],  #Distances from specified point
                                       LocationID = (Stations_selected %>% unite(LocationID, Site, Station, sep = "_", remove = TRUE))[i,1]) #Location ID related to
     #Limit WQ data to selected stations and add information to relate each station to the specified location
-    Selected_data <- left_join(WQ_data_t %>% filter(MonitoringLocationIdentifier %in% WQ_locations_t$MonitoringLocationIdentifier[Selected_WQstation_info$nn[[1]]]), Selected_WQstations)
+    Station_identification <- left_join(WQ_data %>% filter(LatitudeMeasure %in% Selected_WQstations$Latitude_match & LongitudeMeasure %in% Selected_WQstations$Longitude_match) %>% dplyr::select(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure) %>% distinct(), Selected_WQstations, by = c("LatitudeMeasure" = "Latitude_match", "LongitudeMeasure" = "Longitude_match"))
+    Selected_data <- left_join(WQ_data_t %>% filter(MonitoringLocationIdentifier %in% Station_identification$MonitoringLocationIdentifier), (Station_identification %>% dplyr::select(-LatitudeMeasure, -LongitudeMeasure)))
     #Combine filtered data to final output
     WQ_closest_selected <<- rbind(WQ_closest_selected, Selected_data)
     #Map of all possible stations and stations selected for each location
@@ -182,16 +184,26 @@ if(Data_source == "Portal"){
         tm_dots(size = 1.25, col = "LocationID", legend.show = FALSE) + tm_facets(by = "LocationID", free.coords = FALSE)
     print(map)
   }
-} else if (Data_source == "WA"){
+} else if (Data_source == "WA"){#List of possible stations and their coordinates:
+  WQ_locations_t <- st_as_sf(WQ_selected %>% dplyr::select(Latitude, Longitude) %>% distinct() %>% mutate(Lat_n = Latitude, Lon_n = Longitude),
+                             coords = c(2,1), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+  #
+  #Empty data frame to fill with selected data
+  WQ_closest_selected <- data.frame()
+  #
+  #
+  for(i in 1:nrow(Stations_t)){
     #Determine closest N stations for each station
     temp_station <- Stations_t$geometry[i]
     Selected_WQstation_info <- st_nn(temp_station, WQ_locations_t, k = Stations_N, maxdist = maxDist_m, returnDist = TRUE)
     #Create data frame of information of selected stations
-    Selected_WQstations <- data.frame(StationID = WQ_locations_t$StationID[Selected_WQstation_info$nn[[1]]], #Station IDs of closest stations
+    Selected_WQstations <- data.frame(Latitude_match = WQ_locations_t$Lat_n[Selected_WQstation_info$nn[[1]]],
+                                      Longitude_match = WQ_locations_t$Lon_n[Selected_WQstation_info$nn[[1]]],
                                       Distance = Selected_WQstation_info$dist[[1]],  #Distances from specified point
                                       LocationID = (Stations_selected %>% unite(LocationID, Site, Station, sep = "_", remove = TRUE))[i,1]) #Location ID related to
     #Limit WQ data to selected stations and add information to relate each station to the specified location
-    Selected_data <- left_join(WQ_data_t %>% filter(StationID %in% WQ_locations_t$StationID[Selected_WQstation_info$nn[[1]]]), Selected_WQstations)
+    Station_identification <- left_join(WQ_data %>% filter(Latitude %in% Selected_WQstations$Latitude_match & Longitude %in% Selected_WQstations$Longitude_match) %>% dplyr::select(StationID, Latitude, Longitude) %>% distinct(), Selected_WQstations, by = c("Latitude" = "Latitude_match", "Longitude" = "Longitude_match"))
+    Selected_data <- left_join(WQ_data_t %>% filter(StationID %in% Station_identification$StationID), (Station_identification %>% dplyr::select(-Latitude, -Longitude)))
     #Combine filtered data to final output
     WQ_closest_selected <<- rbind(WQ_closest_selected, Selected_data)
     #Map of all possible stations and stations selected for each location
@@ -201,6 +213,7 @@ if(Data_source == "Portal"){
       tm_shape(WQ_closest_selected) + #Stations selected per location
       tm_dots(size = 1.25, col = "LocationID", legend.show = FALSE) + tm_facets(by = "LocationID", free.coords = FALSE)
     print(map)
+  }
 } else {
   print(paste0("Code not yet written for data source ", Data_source))
 }
