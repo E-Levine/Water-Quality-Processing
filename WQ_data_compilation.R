@@ -19,12 +19,12 @@ pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
 ####Compilation setup####
 #
 #Set parameters - run for each data source type
-Estuary_code <- c("CR") #Two letter estuary code
+Estuary_code <- c("SL") #Two letter estuary code
 Data_source <- c("Portal") #"Portal", "WA" , or "FIM"
 #
-#Years of data:
+#Years of data (used in file names):
 Start_year <- c("2023")
-End_year <- c("2024")
+End_year <- c("062024")
 #
 #Skip to "Estuary area", then to Mapping of stations if working with FIM data
 #

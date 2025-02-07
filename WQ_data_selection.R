@@ -1,6 +1,6 @@
 ####Water Quality Data Selection###
 #
-##Selection of WQ stations for data from WQ Portal or Atlas 
+##Selection of WQ stations for data from WQ Portal or Atlas cleaned files
 ##Output of selected data and map
 #
 #
@@ -18,22 +18,39 @@ pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
 #
 #
 ###Setup
-Estuary_code <- c("LX") #Two letter estuary code
+Estuary_code <- c("SL") #Two letter estuary code
 Data_source <- c("Portal") #"Portal" or "WA". Code not currently updated for FIM"
 #
-#Years of possible data:
-Start_year <- c("2023")
-End_year <- c("2024")
+#Number of files to combine (up to 3 max):
+Filtered_files <- c(2)
+#Years of possible data (from file names). Start and end years required for each file. Use 'NA" for any unused files:
+Start_year <- c("2000")
+End_year <- c("2022")
+Start_year_2 <- c("2023")
+End_year_2 <- c("062024")
+Start_year_3 <- c(NA)
+End_year_3 <- c(NA)
 #
 ##Years of desired data:
-Begin_data <- c("2023")
+Begin_data <- c("2015")
 End_data <- c("2024")
 #
 #
 ####Load Files#####
 #
 ##Raw cleaned data
-WQ_data <- as.data.frame(read_excel(paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year,"_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
+if(Filtered_files == 1){
+  WQ_data <- as.data.frame(read_excel(paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year,"_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
+} else if(Filtered_files == 2){
+  WQ_data <- rbind(as.data.frame(read_excel(paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year,"_", End_year,".xlsx"), na = c("NA", " ", "", "Z"))),
+                   as.data.frame(read_excel(paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year_2,"_", End_year_2,".xlsx"), na = c("NA", " ", "", "Z"))))
+} else {
+  WQ_data <- rbind(
+    rbind(as.data.frame(read_excel(paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year,"_", End_year,".xlsx"), na = c("NA", " ", "", "Z"))),
+          as.data.frame(read_excel(paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year_2,"_", End_year_2,".xlsx"), na = c("NA", " ", "", "Z")))),
+    as.data.frame(read_excel(paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_",Start_year_3,"_", End_year_3,".xlsx"), na = c("NA", " ", "", "Z"))))
+}
+#
 #
 #
 #Fixed station locations
@@ -48,7 +65,7 @@ FL_outline <- st_read("KML/FL_Outlines/FL_Outlines.shp")
 plot(FL_outline)
 #
 #
-####Limit data ranges####
+####Limit date ranges####
 #
 ##Limit WQ to years of interest
 if(Data_source == "Portal"){
@@ -58,8 +75,65 @@ WQ_selected <- WQ_data %>% subset(ActivityStartDate >= as.Date(paste0(Begin_data
 }
 #
 ##Code to limit list of monitoring stations if list contains more stations than needed: update sub-setting code for desired stations
-Stations_selected <- Station_locations %>% subset(Station < 6)
+Stations_selected <- Station_locations #%>% subset(Station < 6)
 #
+#
+#
+####Station map####
+#
+WQ_sp <- spTransform(SpatialPointsDataFrame(coords = WQ_data[,c(9,8)], data = WQ_data,
+                                            proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
+                     "+proj=longlat +datum=WGS84 +no_defs +type=crs")
+#
+if(Data_source == "Portal"){
+  Combined_data_counts <- SpatialPointsDataFrame(coords = (WQ_sp@data %>% distinct(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure, ActivityStartDate, KML) %>% group_by(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure, KML) %>% summarise(N = n()) %>% as.data.frame())[,c(3,2)], 
+                                                 data = WQ_sp@data %>% distinct(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure, ActivityStartDate, KML) %>% group_by(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure, KML) %>% summarise(N = n()) %>% as.data.frame(), 
+                                                 proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
+} else if(Data_source == "WA"){
+  Combined_data_counts <- SpatialPointsDataFrame(coords = (WQ_sp@data %>% distinct(StationID, Actual_Latitude, Actual_Longitude, as.Date(SampleDate), KML) %>% group_by(StationID, Actual_Latitude, Actual_Longitude, KML) %>% summarise(N = n()) %>% as.data.frame())[,c(3,2)], 
+                                                 data = WQ_sp@data %>% distinct(StationID, Actual_Latitude, Actual_Longitude, as.Date(SampleDate), KML) %>% group_by(StationID, Actual_Latitude, Actual_Longitude, KML) %>% summarise(N = n()) %>% as.data.frame(), 
+                                                 proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
+} else if (Data_source == "FIM") {
+  Combined_data_counts <- SpatialPointsDataFrame(coords = (WQ_sp@data %>% distinct(Reference, Latitude, Longitude, Sampling_Date, KML) %>% group_by(Reference, Latitude, Longitude, KML) %>% summarise(N = n()) %>% as.data.frame())[,c(3,2)], 
+                                                 data = WQ_sp@data %>% distinct(Reference, Latitude, Longitude, Sampling_Date, KML) %>% group_by(Reference, Latitude, Longitude, KML) %>% summarise(N = n()) %>% as.data.frame(), 
+                                                 proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
+  
+}
+#Visualize locations
+if(Data_source == "Portal"){
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + #Estuary area
+                         tm_polygons() + 
+                         tm_shape(FL_outline) + #Outline of shoreline
+                         tm_borders()+
+                         {if(length(Stations_selected) > 1) tm_shape(SpatialPointsDataFrame(coords = Stations_selected[,c(3,4)], data = Stations_selected, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))) + tm_dots(col = "darkblue", size = 1)}+
+                         tm_shape(Combined_data_counts) + #Stations relation to estuary area
+                         tm_dots("KML", palette = c(In = "red", Out = "black"), size = 0.25, legend.show = TRUE,
+                                 popup.vars = c("StationID" = "MonitoringLocationIdentifier", "Latitude" = "LatitudeMeasure", "Longitude" = "LongitudeMeasure", "Samples" = "N")) +
+                         tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
+} else if(Data_source == "WA"){
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + #Estuary area
+                         tm_polygons() + 
+                         tm_shape(FL_outline) + #Outline of shoreline
+                         tm_borders()+
+                         {if(length(Stations_selected) > 1) tm_shape(SpatialPointsDataFrame(coords = Stations_selected[,c(3,4)], data = Stations_selected, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))) + tm_dots(col = "darkblue", size = 1)}+
+                         tm_shape(Combined_data_counts) + #Stations relation to estuary area
+                         tm_dots("KML", palette = c(In = "red", Out = "black"), size = 0.25, legend.show = TRUE,
+                                 popup.vars = c("StationID" = "StationID", "Latitude" = "Actual_Latitude", "Longitude" = "Actual_Longitude", "Samples" = "N")) +
+                         tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
+} else if (Data_source == "FIM") {
+  (map <- tmap_leaflet(tm_shape(Estuary_area) + #Estuary area
+                         tm_polygons() + 
+                         tm_shape(FL_outline) + #Outline of shoreline
+                         tm_borders()+
+                         {if(length(Stations_selected) > 1) tm_shape(SpatialPointsDataFrame(coords = Stations_selected[,c(3,4)], data = Stations_selected, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))) + tm_dots(col = "darkblue", size = 1)}+
+                         tm_shape(Combined_data_counts) + #Stations relation to estuary area
+                         tm_dots("KML", palette = c(In = "red", Out = "black"), size = 0.25, legend.show = TRUE,
+                                 popup.vars = c("StationID" = "Reference", "Latitude" = "Latitude", "Longitude" = "Longitude", "Samples" = "N")) +
+                         tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
+}
+#
+#
+##END OF SECTION
 #
 #
 ####Station selection - specified buffer distance - run only if selecting stations based on proximity to established locations ("Station_locations")####
@@ -277,6 +351,31 @@ write_xlsx(WQ_stations_final_df, paste0("Data/Compiled_data/", Estuary_code, "_"
 #
 #
 #
+#
+#
+####Station selection - by point location or boundary####
+#
+#Method of selection: Point, Point_boundary, Bounding box, Station_name
+Selection_Method <- c("Station_name")
+#
+# List of any stations to include based on station names: need station ID within "", can be partial of station name if unique to station
+Selected_WQ_stations <- c("SEHAB0115", "WQX-18444", "28010458", "28010365", "BMD-2.5", "02277100")
+#
+if(Selection_Method == "Station_name"){
+  WQ_selected <- WQ_data %>% subset(grepl(paste(Selected_WQ_stations, collapse = "|"), MonitoringLocationIdentifier))
+} else {paste("Code need to be updated.")}
+WQ_stations_final_df <- WQ_selected
+#
+##Code (3-4 letters preferred) to identify project selected data is for:
+Project_code <- c("Cage")
+#
+##Export cleaned final data
+write_xlsx(WQ_stations_final_df, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+
+#
+#
+#
+##END OF SECTION
 #
 #
 ####Output all stations possible####
