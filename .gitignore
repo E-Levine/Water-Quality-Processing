@@ -52,6 +52,7 @@ rsconnect/
 Code/*
 !Code/WQ_data_compilation
 !Code/WQ_data_selection
+!Code/WQ_functions
 !Code/*keep*
 
 # Data folders
