@@ -48,10 +48,16 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
-# Data folder - ignore all Raw_cleaned and Raw_Data. 
-**/Data/Raw_cleaned
-**/Data/Raw_data
-**/Data/Compiled_data
+# Code folder files
+**/Code/*
+!**/Code/WQ_data_compilation
+!**/Code/WQ_data_selection
+!**/Code/*keep*
+
+# Data folders
+**/Data/*/*
+!**/Data/*/.gitkeep
+!**/Data/Reference_data/*
 
 # Maps folder - ignore all widget maps
 **/Maps/*
