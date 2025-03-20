@@ -49,10 +49,10 @@ po/*~
 rsconnect/
 
 # Code folder files
-**/Code/*
-!**/Code/WQ_data_compilation
-!**/Code/WQ_data_selection
-!**/Code/*keep*
+Code/*
+!Code/WQ_data_compilation
+!Code/WQ_data_selection
+!Code/*keep*
 
 # Data folders
 **/Data/*/*
