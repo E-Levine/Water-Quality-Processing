@@ -1,6 +1,7 @@
 ####Water Quality Data Compilation and Cleaning###
 #
 ##Compile WQ data from WQ Portal or Atlas - Select parameters, combine station and WQ data
+##If other data sources are needed. Submit an issue/request to EWilliams (or via the github repo:https://github.com/E-Levine/Water-Quality-Processing)
 ##Output of cleaned data
 #
 #
@@ -19,14 +20,14 @@ pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
 ####Compilation setup####
 #
 #Set parameters - run for each data source type
-Estuary_code <- c("CR") #Two letter estuary code
+Estuary_code <- c("LW") #Two letter estuary code
 Data_source <- c("Portal") #"Portal", "WA" , or "FIM"
 #
-#Years of data:
-Start_year <- c("2023")
-End_year <- c("2024")
+#Years of data (used in file names):
+Start_year <- c("2000")
+End_year <- c("2022")
 #
-#Skip to "Estuary area", then to Mapping of stations if working with FIM data
+#If working with FIM data: Skip to "Estuary area", then to Mapping of stations 
 #
 ####Load files####
 #
@@ -141,7 +142,7 @@ WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)],
                                             proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
                      "+proj=longlat +datum=WGS84 +no_defs +type=crs")
 #
-#SKIP to CRS check  if NOT working with FIM data:: Assign FIM data to working data frame
+#SKIP to CRS check if NOT working with FIM data:: Assign FIM data to working data frame
 Combined_filtered <- as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"))) %>% 
   dplyr::select(TripID, Reference, Sampling_Date, StartTime, Depth, Temperature, pH, Latitude, Longitude, everything()) %>% filter(Longitude != "NULL") %>% mutate(Longitude = as.numeric(Longitude), Latitude = as.numeric(Latitude))
 WQ_sp <- SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
@@ -207,13 +208,13 @@ if(Data_source == "Portal"){
                          tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", sep = " "))))
 }
 #
-saveWidget(map, paste0("../Water-Quality-Processing-Data/Maps/", Estuary_code, "_", Data_source,"_WQ_stations_", Start_year, "_", End_year, "_widget.html"))
+saveWidget(map, paste0("Maps/", Estuary_code, "_", Data_source,"_WQ_stations_", Start_year, "_", End_year, "_widget.html"))
 #
 #
 ####Clean parameter data####
 #
 Combined_filteredk <- Combined_data@data 
-#Skip 198-219 if working with FIM data
+#If working with FIM data, Skip to saving.
 if(Data_source == "Portal"){
 Combined_filteredk <- Combined_filteredk %>% 
   mutate(ResultMeasureValue = as.numeric(ResultMeasureValue)) %>%
