@@ -19,15 +19,15 @@ pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
 source("Code/WQ_functions.R")
 #
 #
-###Setup
-Estuary_code <- c("LW") #Two letter estuary code
-Data_source <- c("Portal") #"Portal" or "WA". Code not currently updated for FIM"
+###Setup - specs####
+Estuary_code <- c("TB") #Two letter estuary code
+Data_source <- c("Portal") #"Portal" or "WA". Code not currently updated for "FIM"
 #
 #Number of files to combine (Enter 1 if only one file. Current max is 3 files):
 Filtered_files <- c(1)
 #Years of possible data (from file names). Start and end years required for each file. Use 'NA" for any unused files:
-Start_year <- c("2000")
-End_year <- c("2022")
+Start_year <- c("2015")
+End_year <- c("2023")
 Start_year_2 <- c(NA)
 End_year_2 <- c(NA)
 Start_year_3 <- c(NA)
@@ -35,7 +35,7 @@ End_year_3 <- c(NA)
 #
 ##Years of desired data:
 Begin_data <- c("2015")
-End_data <- c("2024")
+End_data <- c("2023")
 #
 #
 ####Load Files#####
@@ -140,7 +140,7 @@ To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-
 #
 ##Run to include/exclude stations as specified above and save output of final data:
 #ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
-Selected_data(To_include, To_exclude, "LWWQ")
+Selected_data(To_include, To_exclude, ProjectCode = "LWWQ")
 #
 #
 #           
@@ -166,28 +166,41 @@ To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-
 #
 ##Run to include/exclude stations as specified above and save output of final data:
 #ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
-Closest_data(To_include, To_exclude, "LWWQ")
+Closest_data(To_include, To_exclude, ProjectCode = "LWWQ")
 #
 #
 #
-#
+#END OF SECTION
 #
 ####Station selection - by point location or boundary####
 #
-#Method of selection: Point, Point_boundary, Bounding box, Station_name
-Selection_Method <- c("Station_name")
+#Method of selection: Point, Point_boundary, Bounding_box, Station_name
+Selection_Method <- c("Bounding_box")
 #
 ##For any unused items in next few lines, enter NA
 #Station_name:List of any stations to include based on station names: need station ID within "", can be partial of station name if unique to station
 Selected_WQ_stations <- c("SEHAB0115", "WQX-18444", "28010458", "28010365", "BMD-2.5", "02277100")
+Selected_WQ_stations <- NA
 #Bounding box - enter bounding coordinates in order: West, South, East, North
-bbox <- c()
-
+bbox <- c(-82.74779, 27.61090, -82.67706, 27.71732)
+bbox <- NA
+#
 #
 #
 #ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
-location_boundary(Selection_Method, Selected_WQ_stations, "TEST")
+WQ_stations_selected <- location_boundary(Selection_Method, Selected_WQ_stations, bbox, ProjectCode = "TEST", WidgetSave = "N")
+WQ_stations_selected$BoundedMap #Confirm stations, can chose to include or exclude stations
 #
+#
+#
+# List of any stations to include or exclude from selection by name of station
+#If no stations need to be included or excluded, replace with NA
+To_include <- data.frame(StationID = c("21FLCOSP_WQX-32-03", "21FLHILL_WQX-28", "21FLHILL_WQX-25"))
+To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-03", "21FLCOSP_WQX-CENTRAL CANAL"))
+#
+##Run to include/exclude stations as specified above and save output of final data:
+#Use same project code from above.
+Modified_data(Selection_Method, To_include, To_exclude, ProjectCode = "TEST")
 #
 #
 #

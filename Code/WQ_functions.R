@@ -275,25 +275,112 @@ Closest_data <- function(Adding, Removing, ProjectCode){
 ####Station selection - location/boundary####
 #
 #
-location_boundary <- function(SelectionType, SelectedStations, ProjectCode){
+location_boundary <- function(SelectionType, SelectedStations, BoundingBox, ProjectCode, WidgetSave){
   Type <- SelectionType
   Station_names <- SelectedStations
+  bbox <- BoundingBox
+  Project_code <- ProjectCode
+  #
   #
   if(Type == "Station_name"){
-    if(Data_source == "Portal"){WQ_selected <- Filtered_data %>% subset(grepl(paste(Station_names, collapse = "|"), MonitoringLocationIdentifier))} else {paste("Code needs to be updated.")}
-  } else {paste("Code needs to be updated.")}
-  #
-  WQ_stations_final_df <- WQ_selected
-  #
+    #Selection by station name
+    if(Data_source == "Portal"){
+      WQ_name_selected <- Filtered_data %>% subset(grepl(paste(Station_names, collapse = "|"), MonitoringLocationIdentifier))
+      ##Export cleaned final data
+      write_xlsx(WQ_name_selected, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_name_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+      WQ_stations_final <- WQ_name_selected
+      return(WQ_stations_final)
+      #
+    } else {paste("Code needs to be updated for selection of stations by name for ", Data_source, " data.", sep = "")}
+    #
+    } else if(Type == "Bounding_box"){
+      #Selection within specified bounding box
+      if(Data_source == "Portal"){
+        WQ_bb_selected <- Filtered_data %>% filter(LatitudeMeasure < bbox[4] & LatitudeMeasure > bbox[2] & LongitudeMeasure > bbox[1] & LongitudeMeasure < bbox[3])
+        WQ_stations_final <- WQ_bb_selected
+        #Widget output to identify stations.
+        Possible_stations <- st_as_sf(Filtered_data, coords = c(9,8), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+        WQ_locations_t <- st_as_sf(WQ_bb_selected, coords = c(9,8), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+        (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
+                               tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
+                               tm_shape(Possible_stations,  "Possible stations") + tm_dots(col = "black", size = 0.3, legend.show = TRUE, popup.vars = c("StationID" = "MonitoringLocationIdentifier"))+
+                               tm_shape(WQ_locations_t,  "Selected stations") + tm_dots(col = "red", size = 0.75, legend.show = TRUE, popup.vars = c("StationID" = "MonitoringLocationIdentifier"))+
+                               tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
+        if(WidgetSave == "Y"){saveWidget(map, paste0("Maps/Station_selection/", Estuary_code, "_", Data_source,"_bounding_box_", Begin_data, "_", End_data, "_widget.html"))}
+        return(list(BoundedStations = WQ_stations_final, BoundedMap = map))
+        #
+        } else if(Data_source == "WA"){
+          print(paste0("Code needs to be updated for Water Atlas data."))
+          #Possible_stations <- st_as_sf(Filtered_data, coords = c(3,4), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+          #WQ_locations_t <- st_as_sf(WQ_bb_selected, coords = c(3,4), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+          #(map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
+          #                       tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
+          #                       tm_shape(Possible_stations,  "Possible stations") + tm_dots(col = "black", size = 0.5, legend.show = TRUE, popup.vars = c("StationID" = "MonitoringLocationIdentifier"))+
+          #                       tm_shape(WQ_locations_t,  "Selected stations") + tm_dots(col = "red", size = 0.75, legend.show = TRUE, popup.vars = c("StationID" = "StationID"), popup.format = list())+
+          #                       tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
+          } else {print(paste0("Code not yet written for selection of stations within a bounding box for ", Data_source, " data."))}
+      #
+      #
+    } else {
+      #Other selection types
+      paste("Code needs to be updated.")}
+  }
+#
+#
+#
+##Station additions or removals, final output file
+Modified_data <- function(Selection_Method, Adding, Removing, ProjectCode){
+  ##Code (3-4 letters preferred) to identify project selected data is for:
   Project_code <- ProjectCode
-  ##Export cleaned final data
-  write_xlsx(WQ_stations_final_df, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_location_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
   #
-  return(WQ_stations_final)
-}
-#
-#
-#
+  if(is.na(Adding) & is.na(Removing)){
+    if(Selection_Method == "Station_name"){
+      #Selection by station name - no changes
+      WQ_stations_final <- WQ_stations_selected
+      write_xlsx(WQ_stations_final, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_name_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+      #
+      } else if(Selection_Method == "Bounding_box"){
+        #Selection by bounding box - no changes
+        WQ_stations_final <- WQ_stations_selected$BoundedStations
+        write_xlsx(WQ_stations_final, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_bounding_box_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+      } else {print(paste0("Code not yet written for using ", Selection_Method, "."))}
+  } else if(!is.na(Adding) | !is.na(Removing)){
+    if(Selection_Method == "Station_name"){
+      #Selection by station - with changes
+      if(Data_source == "Portal"){
+        if(is.na(Adding) & !is.na(Removing)){WQ_stations_final <- WQ_stations_selected %>% subset(!MonitoringLocationIdentifier %in% Removing$StationID)
+        } else {WQ_stations_final <- rbind(WQ_stations_selected, WQ_selected %>% subset(MonitoringLocationIdentifier %in% Adding$StationID) %>% left_join(Adding, by = c("MonitoringLocationIdentifier" = "StationID")))}
+        write_xlsx(WQ_stations_final, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_name_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+        #Selection by station with other data sources:
+        } else {print(paste0("Adding or removing stations by name for ", Data_source, "is not yet supported."))}
+      } else if(Selection_Method == "Bounding_box"){
+        #Selection by bounding box - with changes
+        WQ_stations_selected_bb <- WQ_stations_selected$BoundedStations
+        if(Data_source == "Portal"){
+          if(is.na(Adding) & !is.na(Removing)){WQ_stations_final <- WQ_stations_selected_bb %>% subset(!MonitoringLocationIdentifier %in% Removing$StationID)
+          } else {WQ_stations_final <- rbind(WQ_stations_selected, WQ_selected %>% subset(MonitoringLocationIdentifier %in% Adding$StationID) %>% left_join(Adding, by = c("MonitoringLocationIdentifier" = "StationID")))}
+          write_xlsx(WQ_stations_final, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_bounding_box_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+          #Selection by bounding box with other data sources
+        } else {print(paste0("Code not yet written for using bounding box to include/exclude ", Data_source, " stations."))}
+        }
+    } else if(!is.na(Adding) & !is.na(Removing)){
+      if(Selection_Method == "Station_name"){
+        if(Data_source == "Portal"){
+          WQ_stations_final <- rbind(WQ_stations_selected, 
+                                     WQ_selected %>% subset(MonitoringLocationIdentifier %in% Adding$StationID) %>% left_join(Adding, by = c("MonitoringLocationIdentifier" = "StationID")))  %>% subset(!MonitoringLocationIdentifier %in% Removing$StationID)
+          write_xlsx(WQ_stations_final, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_name_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+          #Selection by station with other data sources:
+          } else {print(paste0("Adding or removing stations by name for ", Data_source, "is not yet supported."))}
+        } else if(Selection_Method == "Bounding_box"){
+          if(Data_source == "Portal"){
+            WQ_stations_final <- rbind(WQ_stations_selected, 
+                                       WQ_selected %>% subset(MonitoringLocationIdentifier %in% Adding$StationID) %>% left_join(Adding, by = c("MonitoringLocationIdentifier" = "StationID")))  %>% subset(!MonitoringLocationIdentifier %in% Removing$StationID)
+            write_xlsx(WQ_stations_final, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_bounding_box_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+          } else {print(paste0("Adding or removing stations by name for ", Data_source, "is not yet supported."))}
+        }
+      }
+  return(print(head(WQ_stations_final)))
+  }
 #
 #
 #
