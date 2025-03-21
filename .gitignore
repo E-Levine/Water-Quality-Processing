@@ -61,5 +61,6 @@ Data/*/*
 !Data/Reference_data/*
 
 # Maps folder - ignore all widget maps
-**/Maps/*
-**/Maps/*/*widget_files*/*
+Maps/*
+Maps/*/*widget_files*/*
+!Maps/.gitkeep.txt
