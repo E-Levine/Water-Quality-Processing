@@ -56,9 +56,9 @@ Code/*
 !Code/*keep*
 
 # Data folders
-**/Data/*/*
-!**/Data/*/.gitkeep
-!**/Data/Reference_data/*
+Data/*/*
+!Data/*/.gitkeep.txt
+!Data/Reference_data/*
 
 # Maps folder - ignore all widget maps
 **/Maps/*
