@@ -155,7 +155,7 @@ maxDist_m <- Inf #Maximum distance (in  meters) allowed in selection. If no max,
 #
 Selections_N <- Nclosest_selection(Stations_N, maxDist_m, WidgetSave = "N")
 Selections_N$SelectionMap #StationsMap will return all possible stations
-WQ_Stations <- Selections$WQclosest
+WQ_Stations <- Selections_N$WQclosest
 
 # List of any stations to include or exclude from selection: need station ID and station of reference (both within "")- keep matched on one line/column
 #If no stations need to be included or excluded, replace with NA
@@ -210,7 +210,7 @@ Modified_data(Selection_Method, To_include, To_exclude, ProjectCode = "TEST")
 #
 ####Output all stations possible####
 #
-All_Stations <- output_all(WQ_selected)
+All_Stations <- output_all(WQ_selected, WidgetSave = "Y)
 All_Stations$WQStations
 #
 # List of any stations to include or exclude from selection: need station ID within ""
