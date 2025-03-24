@@ -32,12 +32,14 @@ End_year <- c("2022")
 ####Load files####
 #
 ##Read in Excel site file
-Location_data <- if(Data_source == "WA"){as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"),
+Location_data <- if(Data_source == "Portal"){as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
+  } else if(Data_source == "WA"){as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"),
                                           col_types = c("text", "text", "text", "text", "text", "text", "numeric", "numeric", "text", "date", "numeric", "text",
                                                         "text", "text", "text", "numeric", "text", "text", "text", "numeric", "text")))
-  }else {as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Site data_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))}
+  } else if(Data_source == "FIM"){as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z", "NULL")))
+    } else {paste0("Code not yet updated for ", Data_source," data.")}
 #
-#Skip to "Estuary area" if using WA data.
+#Skip to "Estuary area" if using WA or FIM data.
 #Read in Excel results file (for 1 file) - skip to next section if only 1 results file
 Results_data <- as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_Results_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z")))
 #Read in Excel results file (for 2 files)
@@ -69,13 +71,17 @@ keep_site <- c("MonitoringLocationIdentifier", "OrganizationIdentifier", "Organi
 } else if(Data_source == "WA"){
   keep_site <- c("WBodyID", "WaterBodyName", "DataSource", "StationID", "StationName", "Actual_StationID", "Actual_Latitude", "Actual_Longitude", 
                  "SampleDate", "Parameter", "Characteristic", "Result_Value", "Result_Unit")
+} else if(Data_source == "FIM"){
+  keep_site <- colnames(Location_data)
 }
 #Subset columns and add estuary ID to column
 if(Data_source == "Portal"){
   Location_data <- Location_data[keep_site] %>% add_column(Estuary = Estuary_code, .before = "MonitoringLocationIdentifier")
-}else if(Data_source == "WA"){
+} else if(Data_source == "WA"){
   Location_data <- Location_data[keep_site] %>% add_column(Estuary = Estuary_code, .before = "WBodyID")
-}
+} else if(Data_source == "FIM"){
+  Location_data <- Location_data[keep_site] %>% add_column(Estuary = Estuary_code, .before = "TripID")
+} 
 #Check columns
 head(Location_data, 4)
 #
@@ -86,7 +92,10 @@ head(Location_data, 4)
 if(Data_source == "Portal"){
   keep_results_portal <- c("MonitoringLocationIdentifier", "ResultIdentifier", "ActivityStartDate", "ActivityStartTime/Time", 
                            "ActivityStartTime/TimeZoneCode", "CharacteristicName", "ResultMeasureValue", "ResultMeasure/MeasureUnitCode")
-  Results <- Results_data[keep_results_portal]} else{
+  Results <- Results_data[keep_results_portal]
+} else if(Data_source == "FIM"){
+  paste0("Results file not used for FIM data.")
+} else {
     keep_results_atlas <- "TEMP"
     Results <- Results_data[keep_results_atlas]}
 #
@@ -102,6 +111,10 @@ if(Data_source == "Portal"){
   Combined <- merge(Location_data, Results, by = "MonitoringLocationIdentifier")
 } else if(Data_source == "WA"){
   Combined <- Location_data
+} else if(Data_source == "FIM"){
+  Combined <- Location_data %>% 
+    gather("Characteristic", "Measurement", -Estuary, -TripID, -Reference, -Sampling_Date, -Longitude, -Latitude, -Zone, -StartTime) %>% 
+    mutate(Result_Unit = case_when(Characteristic == "Depth" ~ "m", Characteristic == "Temperature" ~ "degC", Characteristic == "DissolvedO2" ~ "mg/L", TRUE ~ NA))
 }
 #
 ###Filter combined file to only include specified characteristics 
@@ -109,7 +122,7 @@ if(Data_source == "Portal"){
 unique(Combined$CharacteristicName)
 unique(Combined$Characteristic)
 #
-#Assemble list of characteristics to KEEP
+#Assemble list of characteristics to KEEP - Portal data
 Characters <- c("Salinity", "Temperature, water", "Depth, bottom", "Depth, Secchi disk depth", "Temperature, air, deg C", "Turbidity", 
                 "Conductivity", "Specific conductance", "pH", "Dissolved oxygen (DO)", "Dissolved oxygen saturation", 
                 "Chlorophyll a, corrected for pheophytin", "Chlorophyll a", "Total dissolved solids", "Total suspended solids", "Zooplankton", 
@@ -118,7 +131,7 @@ Characters <- c("Salinity", "Temperature, water", "Depth, bottom", "Depth, Secch
 #Filter to only the desired characteristics and check remaining list
 if(Data_source == "Portal"){
   Combined_filtered <- Combined %>% filter(CharacteristicName %in% Characters) %>% rename(Result_Unit = `ResultMeasure/MeasureUnitCode`)
-} else if (Data_source == "WA"){
+} else if (Data_source == "WA" | Data_source == "FIM"){
   Combined_filtered <- Combined 
 }
 #
@@ -129,7 +142,7 @@ Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "ug/
 Combined_filtered$Result_Unit <- str_replace(Combined_filtered$Result_Unit, "ft3/sec", "cfs")
 Combined_filtered$ResultMeasureValue <- str_replace(Combined_filtered$ResultMeasureValue, "\\*Non-detect", "NA")
 #
-#Confirm list of characters selected. - skip for WA data
+#Confirm list of characters selected. - skip for WA of FIM data
 unique(Combined_filtered$CharacteristicName)
 #
 #
@@ -138,14 +151,20 @@ unique(Combined_filtered$CharacteristicName)
 ####Map of stations and limitation of stations to estuary area####
 #
 #Transform CRS and data of WQ data to spatial data
-WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered,
-                                            proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
-                     "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-#
-#SKIP to CRS check if NOT working with FIM data:: Assign FIM data to working data frame
-Combined_filtered <- as.data.frame(read_excel(paste0("Data/Raw_data/", Estuary_code, "_", Data_source,"_", Start_year, "_", End_year,".xlsx"), na = c("NA", " ", "", "Z"))) %>% 
-  dplyr::select(TripID, Reference, Sampling_Date, StartTime, Depth, Temperature, pH, Latitude, Longitude, everything()) %>% filter(Longitude != "NULL") %>% mutate(Longitude = as.numeric(Longitude), Latitude = as.numeric(Latitude))
-WQ_sp <- SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
+if(Data_source == "Portal"){
+  WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered,
+                                              proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
+                       "+proj=longlat +datum=WGS84 +no_defs +type=crs")
+} else if(Data_source == "WA"){
+  WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(9,8)], data = Combined_filtered,
+                                              proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
+                       "+proj=longlat +datum=WGS84 +no_defs +type=crs")
+  paste0("Data may need to be checked. Code not finished for WQ data.")
+} else if(Data_source == "FIM"){
+  WQ_sp <- spTransform(SpatialPointsDataFrame(coords = Combined_filtered[,c(5,6)], data = Combined_filtered,
+                                              proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
+                       "+proj=longlat +datum=WGS84 +no_defs +type=crs")
+}
 #
 #Check CRS s
 crs(Estuary_area)
@@ -214,8 +233,7 @@ saveWidget(map, paste0("Maps/", Estuary_code, "_", Data_source,"_WQ_stations_", 
 ####Clean parameter data####
 #
 Combined_filteredk <- Combined_data@data 
-#If working with FIM data, Skip to saving.
-if(Data_source == "Portal"){
+#
 Combined_filteredk <- Combined_filteredk %>% 
   mutate(ResultMeasureValue = as.numeric(ResultMeasureValue)) %>%
   mutate(ResultMeasureValue = case_when(CharacteristicName == "Specific conductance" & Result_Unit == "mS/cm" ~  ResultMeasureValue*1000, #Convert Spec Cond mS to uS
@@ -235,6 +253,8 @@ Combined_filteredk <- Combined_filteredk %>%
                                    Characteristic == 'Dissolved oxygen saturation' ~ "%", 
                                    Characteristic == 'Secchi disc depth' ~ "m", 
                                    TRUE ~ Result_Unit))
+} else if(Data_source == "FIM"){
+  Combined_filteredk <- Combined_filteredk
 }
 #
 head(Combined_filteredk)
@@ -249,6 +269,6 @@ Comb_fil_2 <- Combined_filteredk %>% filter(ActivityStartDate >= "2012-01-01")
 #
 write_xlsx(Combined_filteredk, paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_", Start_year, "_", End_year,".xlsx"), format_headers = TRUE)
 #
-##Dividing files - use below
+##Dividing files - use below - modify as needed
 write_xlsx(Comb_fil_2, paste0("Data/Raw_cleaned/", Estuary_code, "_", Data_source, "_combined_filtered_2012_", End_year,".xlsx"), format_headers = TRUE)
 #
