@@ -133,7 +133,7 @@ Selected_data <- function(Adding, Removing, ProjectCode){
   Project_code <- ProjectCode
   #
   ##Export cleaned final data
-  write_xlsx(WQ_stations_final_df, paste0("Data/Compiled/", Estuary_code, "_", Data_source, "_selected_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
+  write_xlsx(WQ_stations_final_df, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_selected_buffer_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
   #
   return(print(glimpse(WQ_stations_final)))
 }
@@ -175,9 +175,9 @@ Nclosest_selection <- function(NumStations, maxDistance, WidgetSave){
       #Map of all possible stations and stations selected for each location
       All_map <- tm_shape(Estuary_area) + tm_polygons() + #Estuary area
         tm_shape(FL_outline) + tm_borders() + #Outline of shoreline
-        tm_shape(WQ_locations_t, "Possible stations") + tm_dots(size = 2) + #Stations relation to estuary area
+        tm_shape(WQ_locations_t, "Possible stations") + tm_dots(size = 2, col = "gray") + #Stations relation to estuary area
         tm_shape(WQ_closest_selected, "Selected stations") + #Stations selected per location
-        tm_dots(size = 1.25, col = "LocationID", legend.show = FALSE) + tm_facets(by = "LocationID", free.coords = FALSE)
+        tm_dots(size = 1.25, col = "LocationID", palette = "viridis", legend.show = FALSE) + tm_facets(by = "LocationID", free.coords = FALSE)
     }
   } else if (Data_source == "WA"){#List of possible stations and their coordinates:
     WQ_locations_t <- st_as_sf(WQ_selected %>% dplyr::select(Latitude, Longitude) %>% distinct() %>% mutate(Lat_n = Latitude, Lon_n = Longitude),
@@ -203,9 +203,9 @@ Nclosest_selection <- function(NumStations, maxDistance, WidgetSave){
       #Map of all possible stations and stations selected for each location
       All_map <- tm_shape(Estuary_area) + tm_polygons() + #Estuary area
         tm_shape(FL_outline) + tm_borders() + #Outline of shoreline
-        tm_shape(WQ_locations_t, "Possible stations") + tm_dots(size = 2) + #Stations relation to estuary area
+        tm_shape(WQ_locations_t, "Possible stations") + tm_dots(size = 2, col = "gray") + #Stations relation to estuary area
         tm_shape(WQ_closest_selected, "Selected stations") + #Stations selected per location
-        tm_dots(size = 1.25, col = "LocationID", legend.show = FALSE) + tm_facets(by = "LocationID", free.coords = FALSE)
+        tm_dots(size = 1.25, col = "LocationID", palette = "viridis", legend.show = FALSE) + tm_facets(by = "LocationID", free.coords = FALSE)
     }
   } else {
     print(paste0("Code not yet written for data source ", Data_source))
@@ -216,7 +216,8 @@ Nclosest_selection <- function(NumStations, maxDistance, WidgetSave){
     WQ_closest_selected_info <- WQ_closest_selected %>% dplyr::select(MonitoringLocationIdentifier, LocationID, Distance) %>% unique() %>% group_by(MonitoringLocationIdentifier) %>% summarise(LocationID = paste(LocationID, collapse = ", "), Distance = paste(Distance, collapse = ", "))
     (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
                            tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
-                           tm_shape(WQ_locations_t, "Possible stations") + tm_dots(size = 0.5, legend.show = FALSE, popup.vars = c("Latitude" = "Lat_n", "Longitude" = "Lon_n"))+ #Possible stations
+                           tm_shape(Stations_t, "Reference stations") + tm_dots(size = 0.5, col = "navyblue")+
+                           tm_shape(WQ_locations_t, "Possible stations") + tm_dots(size = 0.5, col = "gray", legend.show = FALSE, popup.vars = c("Latitude" = "Lat_n", "Longitude" = "Lon_n"))+ #Possible stations
                            tm_shape(WQ_closest_selected_info,  "Selected stations") + 
                            tm_dots(col = "red", size = 0.75, legend.show = TRUE, popup.vars = c("StationID" = "MonitoringLocationIdentifier", "LocationID" = "LocationID", "Distance" = "Distance"))+
                            tm_layout(main.title = paste(Estuary_code, Data_source, "Closest", Stations_N,  "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
@@ -224,7 +225,8 @@ Nclosest_selection <- function(NumStations, maxDistance, WidgetSave){
     WQ_closest_selected_info <- WQ_closest_selected %>% dplyr::select(StationID, LocationID, Distance) %>% unique() %>% group_by(StationID) %>% summarise(LocationID = paste(LocationID, collapse = ", "), Distance = paste(Distance, collapse = ", "))
     (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
                            tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
-                           tm_shape(WQ_locations_t,  "Possible stations") + tm_dots(size = 0.5, legend.show = FALSE, popup.vars = c("Latitude" = "Lat_n", "Longitude" = "Lon_n"))+ #Possible stations
+                           tm_shape(Stations_t, "Reference stations") + tm_dot(size = 0.5, col = "navyblue")+
+                           tm_shape(WQ_locations_t,  "Possible stations") + tm_dots(size = 0.5, col = "gray", legend.show = FALSE, popup.vars = c("Latitude" = "Lat_n", "Longitude" = "Lon_n"))+ #Possible stations
                            tm_shape(WQ_closest_selected_info,  "Selected stations") + 
                            tm_dots(col = "red", size = 0.75, legend.show = TRUE, popup.vars = c("StationID" = "StationID", "LocationID" = "LocationID", "Distance" = "Distance"), popup.format = list())+
                            tm_layout(main.title = paste(Estuary_code, Data_source, "Closest", Stations_N, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
@@ -240,10 +242,10 @@ Nclosest_selection <- function(NumStations, maxDistance, WidgetSave){
 ##Station edits, final output file
 Closest_data <- function(Adding, Removing, ProjectCode){
   if(is.na(Adding) & is.na(Removing)){
-    WQ_stations_final <- WQ_closest_selected
+    WQ_stations_final <- WQ_closest
   } else {
     if(Data_source == "Portal"){
-      WQ_stations_final <- rbind(WQ_closest_selected, 
+      WQ_stations_final <- rbind(WQ_closest, 
                                  #Stations to include
                                  WQ_data_t %>% 
                                    subset(MonitoringLocationIdentifier %in% Adding$StationID) %>% mutate(Distance = "NA") %>% 
@@ -386,7 +388,7 @@ Modified_data <- function(Selection_Method, Adding, Removing, ProjectCode){
 #
 ####Output all####
 #
-output_all <- function(WQ_selected){
+output_all <- function(WQ_selected, WidgetSave){
   WQ_data_t <- st_as_sf(WQ_selected, coords = c(9,8), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
   ##Convert FL_outline to same CRS
   FL_outline2 <- FL_outline %>% st_transform(crs = st_crs(3086))
@@ -412,13 +414,13 @@ output_all <- function(WQ_selected){
                            tm_layout(main.title = paste(Estuary_code, Data_source, "WQ Stations", Begin_data, "-", End_data, sep = " ")))) #Selected stations and buffer area
   }
   if(WidgetSave == "Y"){saveWidget(map, paste0("Maps/Station_selection/", Estuary_code, "_", Data_source,"_WQ_stations_", Begin_data, "_", End_data, "_widget.html"))}
-  return(AllStations = map, WQStations = WQ_Stations)
+  return(list(AllStations = map, WQStations = WQ_Stations))
 }
 #
 ##Station edits, final output file
 finalize_data <- function(Adding, Removing, ProjectCode){
   if(is.na(Adding) & is.na(Removing)){
-    WQ_stations_final <- WQ_closest_selected
+    WQ_stations_final <- All_Stations$WQStations
   } else {
     if(Data_source == "Portal"){
       WQ_stations_final <- rbind(WQ_Stations, 
