@@ -139,7 +139,7 @@ To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-
                          Station = c("4", "4", "4"))
 #
 ##Run to include/exclude stations as specified above and save output of final data:
-#ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
+#ProjectCode = short code to specify project data gathered for: CAGE, TBWQ (general)
 Selected_data(To_include, To_exclude, ProjectCode = "LWWQ")
 #
 #
