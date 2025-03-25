@@ -28,7 +28,9 @@ date_window <- function(DateBegin, DateEnd){
     WQ_selected <- Filtered_data %>% subset(ActivityStartDate >= as.Date(paste0(DateBegin, "-01-01")) & ActivityStartDate <= as.Date(paste0(DateEnd,"-12-31")))
   } else if(Data_source == "WA"){
     WQ_selected <- Filtered_data %>% subset(SampleDate >= as.Date(paste0(DateBegin, "-01-01")) & SampleDate <= as.Date(paste0(DateEnd,"-12-31")))
-  }
+  } else if(Data_source == "FIM"){
+    WQ_selected <- Filtered_data %>% subset(Sampling_Date >= as.Date(paste0(DateBegin, "-01-01")) & Sampling_Date <= as.Date(paste0(DateEnd,"-12-31")))
+  } else {paste("Data source not currently supported.")}
   return(WQ_selected)
 }
 #
@@ -37,19 +39,24 @@ date_window <- function(DateBegin, DateEnd){
 #
 #Spatial transformation of data
 Spatial_data <- function(DataInput){
-  WQ_sp <- spTransform(SpatialPointsDataFrame(coords = DataInput[,c(9,8)], data = DataInput,
-                                              proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
-                       "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-  #
   if(Data_source == "Portal"){
+    WQ_sp <- spTransform(SpatialPointsDataFrame(coords = DataInput[,c(9,8)], data = DataInput,
+                                                proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
+                         "+proj=longlat +datum=WGS84 +no_defs +type=crs")
     Combined_data_counts <- SpatialPointsDataFrame(coords = (WQ_sp@data %>% distinct(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure, ActivityStartDate, KML) %>% group_by(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure, KML) %>% summarise(N = n()) %>% as.data.frame())[,c(3,2)], 
                                                    data = WQ_sp@data %>% distinct(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure, ActivityStartDate, KML) %>% group_by(MonitoringLocationIdentifier, LatitudeMeasure, LongitudeMeasure, KML) %>% summarise(N = n()) %>% as.data.frame(), 
                                                    proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
   } else if(Data_source == "WA"){
+    WQ_sp <- spTransform(SpatialPointsDataFrame(coords = DataInput[,c(9,8)], data = DataInput,
+                                                proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
+                         "+proj=longlat +datum=WGS84 +no_defs +type=crs")
     Combined_data_counts <- SpatialPointsDataFrame(coords = (WQ_sp@data %>% distinct(StationID, Actual_Latitude, Actual_Longitude, as.Date(SampleDate), KML) %>% group_by(StationID, Actual_Latitude, Actual_Longitude, KML) %>% summarise(N = n()) %>% as.data.frame())[,c(3,2)], 
                                                    data = WQ_sp@data %>% distinct(StationID, Actual_Latitude, Actual_Longitude, as.Date(SampleDate), KML) %>% group_by(StationID, Actual_Latitude, Actual_Longitude, KML) %>% summarise(N = n()) %>% as.data.frame(), 
                                                    proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
   } else if (Data_source == "FIM") {
+    WQ_sp <- spTransform(SpatialPointsDataFrame(coords = DataInput[,c(5,6)], data = DataInput,
+                                                proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")),
+                         "+proj=longlat +datum=WGS84 +no_defs +type=crs")
     Combined_data_counts <- SpatialPointsDataFrame(coords = (WQ_sp@data %>% distinct(Reference, Latitude, Longitude, Sampling_Date, KML) %>% group_by(Reference, Latitude, Longitude, KML) %>% summarise(N = n()) %>% as.data.frame())[,c(3,2)], 
                                                    data = WQ_sp@data %>% distinct(Reference, Latitude, Longitude, Sampling_Date, KML) %>% group_by(Reference, Latitude, Longitude, KML) %>% summarise(N = n()) %>% as.data.frame(), 
                                                    proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +type=crs"))
@@ -64,7 +71,9 @@ Spatial_data <- function(DataInput){
 ####Station selection - buffers####
 #Requires: WQ_selected, Stations_selected, Estuary_area, FL_outline
 buffer_selection <- function(FirstBuffer, SecondBuffer, WidgetSave, EstuaryCode, DataSource, DateBegin, DateEnd){
-  WQ_data_t <- st_as_sf(WQ_selected, coords = c(9,8), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+  if(Data_source == "FIM"){
+    WQ_data_t <- st_as_sf(WQ_selected, coords = c(5,6), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+  } else {WQ_data_t <- st_as_sf(WQ_selected, coords = c(9,8), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))}
   Stations_t <- st_as_sf(Stations_selected, coords = c(3,4), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
   #
   #Loop to select WQ stations located within specified buffers
@@ -101,28 +110,76 @@ buffer_selection <- function(FirstBuffer, SecondBuffer, WidgetSave, EstuaryCode,
                            tm_shape(WQ_Stations %>% subset(KML == "In"), "Selected stations") + tm_dots(title = "Station within buffer of:", col = "Station", size = 0.25, legend.show = TRUE,
                                                                                    popup.vars = c("StationID" = "StationID", "Station" = "Station", "Buffer" = "Buffer"))+
                            tm_layout(main.title = paste(EstuaryCode, DataSource, "WQ Stations", DateBegin, "-", DateEnd, sep = " ")))) #Selected stations and buffer area
+  } else if(Data_source == "FIM"){
+    (map <- tmap_leaflet(tm_shape(Estuary_area) + tm_polygons(col = "lightblue")+ #Estuary area
+                           tm_shape(FL_outline) + tm_borders()+ #Outline of shoreline
+                           tm_shape(Stations_t, "Fixed stations") + tm_dots(size = 1, legend.show = TRUE, col = "navyblue")+ #All possible stations
+                           tm_shape(WQ_data_t %>% subset(KML == "In"), "Possible stations") + tm_dots(popup.vars = c("StationID" = "Reference"))+ #Reference stations
+                           tm_shape(WQ_Stations %>% subset(KML == "In"), "Selected stations") + tm_dots(title = "Station within buffer of:", col = "Station", size = 0.25, legend.show = TRUE,
+                                                                                                        popup.vars = c("StationID" = "Reference", "Station" = "Station", "Buffer" = "Buffer"))+
+                           tm_layout(main.title = paste(EstuaryCode, DataSource, "WQ Stations", DateBegin, "-", DateEnd, sep = " ")))) #Selected stations and buffer area
   }
   #
   if(WidgetSave == "Y"){saveWidget(map, paste0("Maps/Station_selection/", EstuaryCode, "_", DataSource,"_WQ_stations_buffer", FirstBuffer, "_buffer", SecondBuffer, "_widget.html"))}
   #
   #
-  return(list(Selected_map = map, Stations = WQ_Stations, print(head(WQ_Stations))))
+  return(list(Selected_map = map, Stations = WQ_Stations))
   #
 }
 #
 ##Station edits, final output file
 Selected_data <- function(Adding, Removing, ProjectCode){
-  if(is.na(Adding) & is.na(Removing)){
+  if(Data_source == "FIM"){
+    WQ_data_t <- st_as_sf(WQ_selected, coords = c(5,6), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+  } else {WQ_data_t <- st_as_sf(WQ_selected, coords = c(9,8), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))}
+  #Both NA
+  if(length(Adding) == 1 & length(Removing) == 1){
     WQ_stations_final <- WQ_Stations
-  } else {
-    WQ_stations_final <- rbind(WQ_Stations, 
-                               #Stations to include
-                               WQ_data_t %>% 
-                                 subset(MonitoringLocationIdentifier %in% Adding$StationID) %>% mutate(Buffer = "Extra") %>% 
-                                 left_join(Adding, by = c("MonitoringLocationIdentifier" = "StationID")))  %>%
-      #Stations to exclude
-      subset(!MonitoringLocationIdentifier %in% Removing$StationID)
-  }
+    #Adding NA, Removing not NA
+    } else if(length(Adding) == 1 & length(Removing) > 1) {
+      if(Data_source == "Portal"){
+        WQ_stations_final <- rbind(WQ_Stations, 
+                                   WQ_data_t %>% subset(!MonitoringLocationIdentifier %in% Removing$StationID))
+        } else if(Data_source == "FIM"){
+          WQ_stations_final <- rbind(WQ_Stations, 
+                                     WQ_data_t %>% subset(!Reference %in% Removing$StationID))
+        } else {paste0("Data source not yet supported.")}
+      #Adding not NA, Removing NA
+      } else if(length(Adding) > 1 & length(Removing) == 1){
+        if(Data_source == "Portal"){
+          WQ_stations_final <- rbind(WQ_Stations, 
+                                     #Stations to include
+                                     WQ_data_t %>% 
+                                       subset(MonitoringLocationIdentifier %in% Adding$StationID) %>% mutate(Buffer = "Extra") %>% 
+                                       left_join(Adding, by = c("MonitoringLocationIdentifier" = "StationID")))  
+        } else if(Data_source == "FIM"){
+          WQ_stations_final <- rbind(WQ_Stations, 
+                                     #Stations to include
+                                     WQ_data_t %>% 
+                                       subset(Reference %in% Adding$StationID) %>% mutate(Buffer = "Extra") %>% 
+                                       left_join(Adding, by = c("Reference" = "StationID"))) 
+        } else {paste0("Data source not yet supported.")}
+        #Neither NA
+      } else {
+        if(Data_source == "Portal"){
+          WQ_stations_final <- rbind(WQ_Stations, 
+                                     #Stations to include
+                                     WQ_data_t %>% 
+                                       subset(MonitoringLocationIdentifier %in% Adding$StationID) %>% mutate(Buffer = "Extra") %>% 
+                                       left_join(Adding, by = c("MonitoringLocationIdentifier" = "StationID")))  %>%
+            #Stations to exclude
+            subset(!MonitoringLocationIdentifier %in% Removing$StationID)
+          } else if(Data_source == "FIM"){
+            WQ_stations_final <- rbind(WQ_Stations, 
+                                       #Stations to include
+                                       WQ_data_t %>% 
+                                         subset(Reference %in% Adding$StationID) %>% mutate(Buffer = "Extra") %>% 
+                                         left_join(Adding, by = c("Reference" = "StationID")))  %>%
+              #Stations to exclude
+              subset(!Reference %in% Removing$StationID)
+          } else {paste0("Data source not yet supported.")}
+        }
+
   #
   ##Get coordinates into columns
   WQ_stations_final_df <- WQ_stations_final %>% st_transform(crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>%
@@ -135,7 +192,7 @@ Selected_data <- function(Adding, Removing, ProjectCode){
   ##Export cleaned final data
   write_xlsx(WQ_stations_final_df, paste0("Data/Compiled_data/", Estuary_code, "_", Data_source, "_selected_buffer_", Project_code, "_", Begin_data, "_", End_data,".xlsx"), format_headers = TRUE)
   #
-  return(print(glimpse(WQ_stations_final)))
+  return(print(head(WQ_stations_final %>% as.data.frame())))
 }
 #
 #
@@ -147,7 +204,9 @@ Selected_data <- function(Adding, Removing, ProjectCode){
 Nclosest_selection <- function(NumStations, maxDistance, WidgetSave){
   Stations_t <- st_as_sf(Stations_selected, coords = c(3,4), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
   #All WQ data possible:
-  WQ_data_t <- st_as_sf(WQ_selected, coords = c(9,8), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+  if(Data_source == "FIM"){
+    WQ_data_t <- st_as_sf(WQ_selected, coords = c(5,6), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
+  } else {WQ_data_t <- st_as_sf(WQ_selected, coords = c(9,8), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))}
   #
   if(Data_source == "Portal"){
     #List of possible stations and their coordinates:
@@ -179,7 +238,8 @@ Nclosest_selection <- function(NumStations, maxDistance, WidgetSave){
         tm_shape(WQ_closest_selected, "Selected stations") + #Stations selected per location
         tm_dots(size = 1.25, col = "LocationID", palette = "viridis", legend.show = FALSE) + tm_facets(by = "LocationID", free.coords = FALSE)
     }
-  } else if (Data_source == "WA"){#List of possible stations and their coordinates:
+  } else if (Data_source == "WA"){
+    #List of possible stations and their coordinates:
     WQ_locations_t <- st_as_sf(WQ_selected %>% dplyr::select(Latitude, Longitude) %>% distinct() %>% mutate(Lat_n = Latitude, Lon_n = Longitude),
                                coords = c(2,1), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs") %>% st_transform(crs = st_crs(3086))
     #
