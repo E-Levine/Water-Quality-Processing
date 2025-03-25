@@ -172,9 +172,9 @@ Closest_data(To_include, To_exclude, ProjectCode = "LWWQ")
 #
 #END OF SECTION
 #
-####Station selection - by point location or boundary####
+####Station selection - by station name or desiganted boundary####
 #
-#Method of selection: Point, Point_boundary, Bounding_box, Station_name
+#Method of selection: Bounding_box, Station_name
 Selection_Method <- c("Bounding_box")
 #
 ##For any unused items in next few lines, enter NA
@@ -219,7 +219,7 @@ To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0169", "21FLPDEM_WQX-24-
 #
 ##Run to include and/or exclude based on lines above
 #ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
-finalize_data(To_include, To_exclude, "LWWQ")
+finalize_data(To_include, To_exclude, ProjectCode = "LWWQ")
 #
 # 
 #
