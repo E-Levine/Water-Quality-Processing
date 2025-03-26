@@ -501,7 +501,7 @@ Modified_data <- function(Selection_Method, Adding, Removing, ProjectCode){
 #
 #
 #
-####Output all####
+####Station selection - Output all####
 #
 output_all <- function(WQ_selected, WidgetSave){
   if(Data_source == "FIM"){
@@ -598,6 +598,108 @@ finalize_data <- function(Adding, Removing, ProjectCode){
 #
 #
 #
+#
+#
+####Data combination####
+#
+###Load all files needed
+load_all_files <- function(){
+  #Initialize list to store data frames and summary dataframe
+  file_list <- list()
+  file_summary <- data.frame('Data source' = character(), Code = character(), 'Selection method' = character())
+  file_names <- list()
+  #
+  # Loop through each combination of Data_selection_method, Project_codes, and Data_sources
+  for (selection in Data_selection_method) {
+    for (project in Project_codes) {
+      for (source in Data_sources) {
+        # Construct the file name based on the current combination
+        if(is.na(selection)){
+          file_name <- paste0(Estuary_code,"_", source, "_", project, "_", Start_year, "_", End_year, ".xlsx")
+        } else {
+          file_name <- paste0(Estuary_code,"_", source, "_", selection, "_", project, "_", Start_year, "_", End_year, ".xlsx")
+        }
+        
+        # Specify the path to the directory where the files are located
+        # Replace 'your_directory_path' with the actual path
+        file_path <- file.path("Data/Compiled_data/", file_name)
+        
+        # Check if the file exists before trying to read it
+        if (file.exists(file_path)) {
+          # Read the Excel file
+          data <- read_excel(file_path)
+          
+          # Store the data frame in the list with a unique name
+          file_list[[paste(source, project, selection, sep = "_")]] <- data
+          file_summary <- rbind(file_summary, data.frame('Data source' = source, Code = project, 'Selection method' = selection))
+          file_names[[paste(source, project, selection, sep = "_")]] <- file_name
+        } else {
+          message(paste("Combination does not exist:", source, "-", project, "-", selection))
+        }
+      }
+    }
+  }
+  return(list(list_of_files = file_list, summary = file_summary, filenames = file_names))
+}
+#
+#
+combine_data_sources <- function(){
+  #Empty data to fill
+  combined_data <- data.frame()
+  #
+  for(listdata in seq_along(Data_gather$list_of_files)){
+    listname <- names(Data_gather$list_of_files[listdata])
+    #Check if FIM data
+    if(grepl("FIM", substr(listname, 1, regexpr("_", listname) -1))){
+      #extract data to work with
+      data <- Data_gather$list_of_files[[listdata]]
+      #list of desired columns for merging
+      list_cols <- c("Estuary", "Sampling_Date", "Reference", "Longitude", "Latitude", "KML", "Characteristic", "Measurement", "Result_Unit", "Station", 'Buffer')
+      #Select columns that exist and create/fill NA as needed
+      data <- data %>% dplyr::select(any_of(list_cols))
+      for (col in setdiff(list_cols, names(data))) {
+        data[[col]] <- NA
+        }
+      All_FIM <- rbind(combined_data, data)
+      #Check if Portal data
+      } else if(grepl("Portal", substr(listname, 1, regexpr("_", listname) -1))){
+        #extract data to work with
+        data <- Data_gather$list_of_files[[listdata]]
+        #list of desired columns for merging
+        list_cols <- c("Estuary", "ActivityStartDate", "MonitoringLocationIdentifier", "Longitude", "Latitude", "KML", "CharacteristicName", "ResultMeasureValue", "Result_Unit", "Station", 'Buffer')
+        #Select columns that exist and create/fill NA as needed
+        data <- data %>% dplyr::select(any_of(list_cols))
+        for (col in setdiff(list_cols, names(data))) {
+          data[[col]] <- NA
+          }
+        All_Portal <- rbind(combined_data, data)
+      } else {print(paste("Code currently doesn't support compiling for", listname))}
+    }
+  #Rename columns and combine data
+  All_data <- rbind(
+    #FIM data
+    All_FIM %>% 
+      rename(Date = "Sampling_Date", WQ_ID = "Reference", Parameter = "Characteristic") %>% 
+      mutate(Source = "FIM"),
+    #Portal data
+    All_Portal %>% 
+      rename(Date = "ActivityStartDate", WQ_ID = "MonitoringLocationIdentifier",  Parameter = "CharacteristicName", Measurement = "ResultMeasureValue") %>% 
+      mutate(Source = "Portal"))
+  #
+  #MAKE SUMMARY INFO
+  SummaryInfo <- cbind(suppressWarnings(Data_gather$summary %>% dplyr::select(Data.source, Selection.method)),
+                       cbind(data.frame(Years = paste(Start_year, End_year, sep = " - ")),
+                             data.frame(File.Names = unlist(Data_gather$filenames, use.names = FALSE), stringsAsFactors = FALSE))) %>% 
+    rbind(data.frame(Data.source = "Notes:", Selection.method = Data_note, Years = NA, File.Names = NA))
+  SummaryInfo <- SummaryInfo %>% mutate(Selection.method = replace_na(Selection.method, "All data"))
+  ##Create list with data output and summary output 
+  sheets <- list(WQData = All_data, Summary = SummaryInfo)
+  ##Export cleaned final data
+  write_xlsx(sheets,  path = paste0("Data/Final_data/", Estuary_code, "_", Final_code, "_", Start_year, "_", End_year,".xlsx"), format_headers = TRUE)
+  #
+  return(All_data)
+  message(paste0("Combined data saved as: ", Estuary_code, "_", Final_code, "_", Start_year, "_", End_year,".xlsx"))
+  }
 #
 #
 #
