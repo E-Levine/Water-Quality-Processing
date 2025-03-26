@@ -34,16 +34,18 @@ Data_note <- c("Data collected for testing HSM modeling.")
 #
 #END OF SET UP
 #
-####Load files####
 #
+####Load files
 Data_gather <- load_all_files()
 Data_gather$summary
 Data_gather$filenames
 #
+#
+#
+####Combine and output data file
 Final_data <- combine_data_sources()
 Final_data
 #
 #
 #
-#END OF SECTION
 #
