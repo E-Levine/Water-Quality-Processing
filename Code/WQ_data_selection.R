@@ -1,6 +1,6 @@
 ####Water Quality Data Selection###
 #
-##Selection of WQ stations for data from WQ Portal or Atlas cleaned files
+##Selection of WQ stations for data from cleaned files
 #If other data sources are needed, submit a request to EWilliams (or via the github repo:https://github.com/E-Levine/Water-Quality-Processing)
 ##Output of selected data and map
 #
@@ -21,7 +21,7 @@ source("Code/WQ_functions.R")
 #
 ###Setup - specs####
 Estuary_code <- c("TB") #Two letter estuary code
-Data_source <- c("Portal") #"Portal" or "WA". Code not currently updated for "FIM"
+Data_source <- c("Portal") #Source of data: "Portal", "WA", "FIM"
 #
 #Number of files to combine (Enter 1 if only one file. Current max is 3 files):
 Filtered_files <- c(1)
@@ -139,8 +139,9 @@ To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-
                          Station = c("4", "4", "4"))
 #
 ##Run to include/exclude stations as specified above and save output of final data:
-#ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
-Selected_data(To_include, To_exclude, ProjectCode = "LWWQ")
+#BufferOrN - method of selection either "Buffer" or "N"
+#ProjectCode = short code to specify project data gathered for: CAGE, TBWQ (general)
+Selected_data(BufferOrN = "Buffer", To_include, To_exclude, ProjectCode = "LWWQ")
 #
 #
 #           
@@ -155,7 +156,7 @@ maxDist_m <- Inf #Maximum distance (in  meters) allowed in selection. If no max,
 #
 Selections_N <- Nclosest_selection(Stations_N, maxDist_m, WidgetSave = "N")
 Selections_N$SelectionMap #StationsMap will return all possible stations
-WQ_Stations <- Selections$WQclosest
+WQ_Stations <- Selections_N$WQclosest
 
 # List of any stations to include or exclude from selection: need station ID and station of reference (both within "")- keep matched on one line/column
 #If no stations need to be included or excluded, replace with NA
@@ -165,16 +166,17 @@ To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-
                          LocationID = c("LXN-4", "LXN-4", "LXN-4"))
 #
 ##Run to include/exclude stations as specified above and save output of final data:
+#BufferOrN - method of selection either "Buffer" or "N"
 #ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
-Closest_data(To_include, To_exclude, ProjectCode = "LWWQ")
+Selected_data(BufferOrN = "N", To_include, To_exclude, ProjectCode = "LWWQ")
 #
 #
 #
 #END OF SECTION
 #
-####Station selection - by point location or boundary####
+####Station selection - by station name or desiganted boundary####
 #
-#Method of selection: Point, Point_boundary, Bounding_box, Station_name
+#Method of selection: Bounding_box, Station_name
 Selection_Method <- c("Bounding_box")
 #
 ##For any unused items in next few lines, enter NA
@@ -187,7 +189,7 @@ bbox <- NA
 #
 #
 #
-#ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
+#ProjectCode = short code to specify project data gathered for: CAGE, TBWQ (general)
 WQ_stations_selected <- location_boundary(Selection_Method, Selected_WQ_stations, bbox, ProjectCode = "TEST", WidgetSave = "N")
 WQ_stations_selected$BoundedMap #Confirm stations, can chose to include or exclude stations
 #
@@ -210,7 +212,7 @@ Modified_data(Selection_Method, To_include, To_exclude, ProjectCode = "TEST")
 #
 ####Output all stations possible####
 #
-All_Stations <- output_all(WQ_selected)
+All_Stations <- output_all(WQ_selected, WidgetSave = "Y)
 All_Stations$WQStations
 #
 # List of any stations to include or exclude from selection: need station ID within ""
@@ -219,7 +221,7 @@ To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0169", "21FLPDEM_WQX-24-
 #
 ##Run to include and/or exclude based on lines above
 #ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
-finalize_data(To_include, To_exclude, "LWWQ")
+finalize_data(To_include, To_exclude, ProjectCode = "LWWQ")
 #
 # 
 #

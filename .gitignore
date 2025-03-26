@@ -50,8 +50,8 @@ rsconnect/
 
 # Code folder files
 Code/*
-!Code/WQ_data_compilation
-!Code/WQ_data_selection
+!Code/WQ_data_compilation.R
+!Code/WQ_data_selection.R
 !Code/WQ_functions.R
 !Code/*keep*
 
