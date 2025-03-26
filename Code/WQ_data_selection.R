@@ -1,6 +1,6 @@
 ####Water Quality Data Selection###
 #
-##Selection of WQ stations for data from WQ Portal or Atlas cleaned files
+##Selection of WQ stations for data from cleaned files
 #If other data sources are needed, submit a request to EWilliams (or via the github repo:https://github.com/E-Levine/Water-Quality-Processing)
 ##Output of selected data and map
 #
@@ -21,7 +21,7 @@ source("Code/WQ_functions.R")
 #
 ###Setup - specs####
 Estuary_code <- c("TB") #Two letter estuary code
-Data_source <- c("Portal") #"Portal" or "WA". Code not currently updated for "FIM"
+Data_source <- c("Portal") #Source of data: "Portal", "WA", "FIM"
 #
 #Number of files to combine (Enter 1 if only one file. Current max is 3 files):
 Filtered_files <- c(1)
