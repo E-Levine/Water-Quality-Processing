@@ -21,7 +21,7 @@ pacman::p_load(plyr, tidyverse, readxl, writexl, #Df manipulation, basic summary
 #
 #Set parameters - run for each data source type
 Estuary_code <- c("LW") #Two letter estuary code
-Data_source <- c("Portal") #Source of data: "Portal", "FIM"
+Data_source <- c("Portal") #Source of data: "Portal", "WA", "FIM"
 #
 #Years of data (used in file names):
 Start_year <- c("2000")
