@@ -139,8 +139,9 @@ To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-
                          Station = c("4", "4", "4"))
 #
 ##Run to include/exclude stations as specified above and save output of final data:
+#BufferOrN - method of selection either "Buffer" or "N"
 #ProjectCode = short code to specify project data gathered for: CAGE, TBWQ (general)
-Selected_data(To_include, To_exclude, ProjectCode = "LWWQ")
+Selected_data(BufferOrN = "Buffer", To_include, To_exclude, ProjectCode = "LWWQ")
 #
 #
 #           
@@ -165,8 +166,9 @@ To_exclude <- data.frame(StationID = c("21FLTPA_WQX-G5SW0146", "21FLCOSP_WQX-45-
                          LocationID = c("LXN-4", "LXN-4", "LXN-4"))
 #
 ##Run to include/exclude stations as specified above and save output of final data:
+#BufferOrN - method of selection either "Buffer" or "N"
 #ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
-Closest_data(To_include, To_exclude, ProjectCode = "LWWQ")
+Selected_data(BufferOrN = "N", To_include, To_exclude, ProjectCode = "LWWQ")
 #
 #
 #
@@ -187,7 +189,7 @@ bbox <- NA
 #
 #
 #
-#ProjectCode = 3-4 letter code to specify project data gathered for: CAGE, TBWQ (general)
+#ProjectCode = short code to specify project data gathered for: CAGE, TBWQ (general)
 WQ_stations_selected <- location_boundary(Selection_Method, Selected_WQ_stations, bbox, ProjectCode = "TEST", WidgetSave = "N")
 WQ_stations_selected$BoundedMap #Confirm stations, can chose to include or exclude stations
 #
