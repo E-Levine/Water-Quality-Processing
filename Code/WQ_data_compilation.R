@@ -1,6 +1,6 @@
 ####Water Quality Data Compilation and Cleaning###
 #
-##Compile WQ data from WQ Portal or Atlas - Select parameters, combine station and WQ data
+##Compile WQ data - Select parameters, combine station and WQ data
 ##If other data sources are needed. Submit an issue/request to EWilliams (or via the github repo:https://github.com/E-Levine/Water-Quality-Processing)
 ##Output of cleaned data
 #
